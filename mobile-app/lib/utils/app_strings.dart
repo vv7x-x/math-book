@@ -1,0 +1,43 @@
+class AppStrings {
+  static const Map<String, Map<String, String>> localized = {
+    'ar': {
+      'app_title': 'بوابة الطالب',
+      'login': 'دخول',
+      'register': 'تسجيل حساب',
+      'username': 'اسم المستخدم',
+      'full_name': 'الاسم الكامل',
+      'national_id': 'الرقم القومي/شهادة الميلاد',
+      'student_phone': 'هاتف الطالب',
+      'parent_phone': 'هاتف ولي الأمر',
+      'stage': 'المرحلة التعليمية',
+      'age': 'العمر',
+      'center': 'المركز',
+      'submit': 'إرسال',
+      'dashboard': 'لوحة الطالب',
+      'schedule': 'جدول الدروس',
+      'announcements': 'الإعلانات',
+      'teacher_news': 'أخبار المعلم',
+      'qr_code': 'كود الحضور',
+    },
+    'en': {
+      'app_title': 'Student Portal',
+      'login': 'Login',
+      'register': 'Register',
+      'username': 'Username',
+      'full_name': 'Full Name',
+      'national_id': 'National ID/Birth Certificate',
+      'student_phone': 'Student Phone',
+      'parent_phone': 'Parent Phone',
+      'stage': 'Education Stage',
+      'age': 'Age',
+      'center': 'Learning Center',
+      'submit': 'Submit',
+      'dashboard': 'Dashboard',
+      'schedule': 'Lesson Schedule',
+      'announcements': 'Announcements',
+      'teacher_news': 'Teacher News',
+      'qr_code': 'Attendance QR Code',
+    },
+  };
+}
+

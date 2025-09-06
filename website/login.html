@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول | بوابة الطالب</title>
+  <link rel="stylesheet" href="./assets/css/style.css" />
+  <link rel="icon" href="./assets/img/logo.svg" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo-title">
+      <img src="./assets/img/logo.svg" alt="Logo" class="logo" />
+      <h1 data-i18n="title">أحمد سامي – سبشيال وان</h1>
+    </div>
+    <div class="header-actions">
+      <button id="themeToggle" class="icon-button" aria-label="Theme">🌓</button>
+      <select id="langSelect" class="select">
+        <option value="ar">العربية</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2 data-i18n="login">تسجيل الدخول</h2>
+    <form id="loginForm" class="card form-grid">
+      <label>
+        <span data-i18n="username">اسم المستخدم</span>
+        <input name="username" required />
+      </label>
+      <div class="form-actions">
+        <button class="button primary" type="submit" data-i18n="login">تسجيل الدخول</button>
+        <a class="button" href="./register.html" data-i18n="register">تسجيل حساب</a>
+      </div>
+      <p id="loginMsg" class="muted"></p>
+    </form>
+  </main>
+
+  <footer class="app-footer">
+    <span>© <span id="year"></span> <span data-i18n="brand">أحمد سامي – سبشيال وان</span></span>
+  </footer>
+
+  <script src="./assets/js/i18n.js"></script>
+  <script src="./assets/js/theme.js"></script>
+  <script src="./assets/js/api.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
+
