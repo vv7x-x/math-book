@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>لوحة الإدارة | سبشيال وان</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="titles">
+        <h1 class="app-title">لوحة الإدارة</h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="logout" class="btn ghost">خروج</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="dashboard">
+      <div class="card">
+        <h3>الطلبات المعلقة</h3>
+        <div class="list" id="pending"></div>
+      </div>
+      <div class="card">
+        <h3>إدارة الجداول</h3>
+        <div class="list" id="lessons"></div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <input id="ls_subject" placeholder="المادة" class="input"/>
+          <input id="ls_date" type="date" class="input"/>
+          <input id="ls_time" type="time" class="input"/>
+          <input id="ls_center" placeholder="المركز" class="input"/>
+          <button id="addLesson" class="btn primary">إضافة</button>
+        </div>
+      </div>
+      <div class="card" style="grid-column:1/-1">
+        <h3>الإعلانات</h3>
+        <div class="list" id="ann"></div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <input id="ann_text" placeholder="نص الإعلان" class="input"/>
+          <button id="addAnn" class="btn secondary">نشر</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  // Admin auth (placeholder)
+  const token = localStorage.getItem('adminToken');
+  if(!token){ const t = prompt('كلمة مرور المشرف'); if(t==='admin'){ localStorage.setItem('adminToken','admin'); } else { alert('غير مصرح'); location.href='/'; } }
+  document.getElementById('logout').onclick=()=>{ localStorage.removeItem('adminToken'); location.reload(); };
+
+  async function refresh(){
+    const [pending, lessons, ann] = await Promise.all([
+      fetch('http://localhost:5179/api/admin/pending').then(r=>r.json()),
+      fetch('http://localhost:5179/api/schedules').then(r=>r.json()),
+      fetch('http://localhost:5179/api/announcements').then(r=>r.json()),
+    ]);
+    const p = document.getElementById('pending'); p.innerHTML='';
+    pending.forEach(s=>{
+      const d = document.createElement('div'); d.className='item';
+      d.innerHTML = `<strong>${s.fullName}</strong> — ${s.center} <div style="float:left;display:flex;gap:6px"><button data-id="${s.id}" class="btn primary a">قبول</button><button data-id="${s.id}" class="btn">رفض</button></div>`;
+      p.appendChild(d);
+    });
+    document.querySelectorAll('.a').forEach(b=>b.onclick=async()=>{ await fetch(`http://localhost:5179/api/admin/approve/${b.dataset.id}`,{method:'POST'}); refresh(); });
+    document.querySelectorAll('.btn:not(.primary)').forEach(b=>b.onclick=async()=>{ const id=b.dataset.id; if(id){ await fetch(`http://localhost:5179/api/admin/reject/${id}`,{method:'POST'}); refresh(); }});
+
+    const l = document.getElementById('lessons'); l.innerHTML='';
+    lessons.forEach(s=>{ const d=document.createElement('div'); d.className='item'; d.textContent=`${s.subject} — ${s.date} ${s.time} — ${s.center}`; l.appendChild(d); });
+
+    const a = document.getElementById('ann'); a.innerHTML='';
+    ann.forEach(n=>{ const d=document.createElement('div'); d.className='item'; d.textContent=n.text; a.appendChild(d); });
+  }
+  refresh();
+
+  document.getElementById('addLesson').onclick=async()=>{
+    const subject = document.getElementById('ls_subject').value;
+    const date = document.getElementById('ls_date').value;
+    const time = document.getElementById('ls_time').value;
+    const center = document.getElementById('ls_center').value;
+    await fetch('http://localhost:5179/api/admin/lessons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subject,date,time,center})});
+    refresh();
+  };
+  document.getElementById('addAnn').onclick=async()=>{
+    const text = document.getElementById('ann_text').value;
+    await fetch('http://localhost:5179/api/admin/announcements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    refresh();
+  };
+  </script>
+</body>
+</html>
