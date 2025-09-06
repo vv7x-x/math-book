@@ -57,6 +57,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton.icon(onPressed: () => Navigator.of(context).pushNamed('/qr'), icon: const Icon(Icons.qr_code), label: const Text('QR')),
+                ElevatedButton.icon(onPressed: () => Navigator.of(context).pushNamed('/announcements'), icon: const Icon(Icons.campaign), label: const Text('الإعلانات')),
+                ElevatedButton.icon(onPressed: () => Navigator.of(context).pushNamed('/teacher-news'), icon: const Icon(Icons.school), label: const Text('أخبار')),
+              ],
+            ),
+            const SizedBox(height: 12),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),

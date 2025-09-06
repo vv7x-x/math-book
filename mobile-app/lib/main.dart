@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
+import 'screens/registration_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/qr_code_screen.dart';
+import 'screens/announcements_screen.dart';
+import 'screens/teacher_news_screen.dart';
+import 'services/notification_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  NotificationService.init();
   runApp(const SpecialOneApp());
 }
 
@@ -64,8 +70,11 @@ class _SpecialOneAppState extends State<SpecialOneApp> {
       locale: _locale,
       routes: {
         '/': (ctx) => LoginScreen(onToggleTheme: _toggleTheme, onToggleLang: _toggleLang),
-        '/register': (ctx) => RegisterScreen(),
+        '/registration': (ctx) => const RegistrationScreen(),
         '/dashboard': (ctx) => DashboardScreen(onToggleTheme: _toggleTheme, onToggleLang: _toggleLang),
+        '/qr': (ctx) => const QrCodeScreen(),
+        '/announcements': (ctx) => const AnnouncementsScreen(),
+        '/teacher-news': (ctx) => const TeacherNewsScreen(),
       },
     );
   }

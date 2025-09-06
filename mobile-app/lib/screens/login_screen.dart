@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 12),
             ElevatedButton(onPressed: _loading ? null : _login, child: _loading ? const CircularProgressIndicator() : const Text('دخول')),
             const SizedBox(height: 8),
-            OutlinedButton(onPressed: () => Navigator.of(context).pushNamed('/register'), child: const Text('تسجيل حساب')),
+            OutlinedButton(onPressed: () => Navigator.of(context).pushNamed('/registration'), child: const Text('تسجيل حساب')),
             if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: const TextStyle(color: Colors.red)))
           ],
         ),

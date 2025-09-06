@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../services/api.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class RegistrationScreen extends StatefulWidget {
+  const RegistrationScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> _data = {};
   List<String> _centers = [];
