@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة الإدارة</title>
+  <link rel="stylesheet" href="./assets/css/style.css" />
+  <link rel="icon" href="./assets/img/logo.svg" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo-title">
+      <img src="./assets/img/logo.svg" alt="Logo" class="logo" />
+      <h1>لوحة الإدارة</h1>
+    </div>
+    <div class="header-actions">
+      <button id="themeToggle" class="icon-button" aria-label="Theme">🌓</button>
+      <button id="logoutBtn" class="button">خروج</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="tabs">
+      <button class="tab-button active" data-tab="pending">طلبات التسجيل</button>
+      <button class="tab-button" data-tab="lessons">الدروس</button>
+      <button class="tab-button" data-tab="announcements">الإعلانات</button>
+      <button class="tab-button" data-tab="centers">المراكز</button>
+    </div>
+
+    <section id="tab-pending" class="tab active card">
+      <h3>طلبات التسجيل</h3>
+      <ul id="pendingList" class="list"></ul>
+    </section>
+
+    <section id="tab-lessons" class="tab card">
+      <h3>إدارة الدروس</h3>
+      <form id="lessonForm" class="form-grid">
+        <label><span>المادة</span><input name="subject" required /></label>
+        <label><span>التاريخ والوقت</span><input type="datetime-local" name="date" required /></label>
+        <label><span>المركز</span><input name="center" required /></label>
+        <div class="form-actions">
+          <button class="button primary" type="submit">إضافة</button>
+        </div>
+      </form>
+      <ul id="lessonList" class="list"></ul>
+    </section>
+
+    <section id="tab-announcements" class="tab card">
+      <h3>الإعلانات</h3>
+      <form id="annForm" class="form-grid">
+        <label><span>العنوان</span><input name="title" required /></label>
+        <label class="full"><span>النص</span><input name="message" required /></label>
+        <div class="form-actions">
+          <button class="button primary" type="submit">نشر</button>
+        </div>
+      </form>
+      <ul id="annList" class="list"></ul>
+    </section>
+
+    <section id="tab-centers" class="tab card">
+      <h3>المراكز</h3>
+      <form id="centerForm" class="form-grid">
+        <label><span>اسم المركز</span><input name="name" required /></label>
+        <div class="form-actions">
+          <button class="button primary" type="submit">إضافة</button>
+        </div>
+      </form>
+      <ul id="centerList" class="list"></ul>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>© <span id="year"></span> أحمد سامي – سبشيال وان</span>
+  </footer>
+
+  <script src="./assets/js/theme.js"></script>
+  <script src="./assets/js/i18n.js"></script>
+  <script src="./assets/js/api.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
+
