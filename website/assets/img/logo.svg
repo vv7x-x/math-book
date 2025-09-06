@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0%" stop-color="#1E88E5"/>
+      <stop offset="100%" stop-color="#455A64"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="24" fill="url(#g)"/>
+  <g fill="#fff">
+    <path d="M60 120c10-30 40-50 80-50 0 20-10 40-30 55 10 5 20 10 30 20-30 0-60-10-80-25z" opacity="0.85"/>
+    <circle cx="70" cy="70" r="14"/>
+  </g>
+  <text x="100" y="180" text-anchor="middle" font-size="16" fill="#fff">أحمد سامي – سبشيال وان</text>
+</svg>
+

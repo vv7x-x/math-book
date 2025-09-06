@@ -11,7 +11,8 @@ const COLLECTIONS = {
   lessons: 'lessons',
   attendance: 'attendance',
   announcements: 'announcements',
-  admins: 'admins'
+  admins: 'admins',
+  centers: 'centers'
 };
 
 // Registration: create pending student
@@ -176,6 +177,68 @@ router.post('/attendance', async (req, res) => {
     return res.json({ success: true, id });
   } catch {
     return res.status(500).json({ error: 'Failed to mark attendance' });
+  }
+});
+
+// Admin login (simple, non-JWT for MVP)
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Missing credentials' });
+    const snapshot = await getDb()
+      .collection(COLLECTIONS.admins)
+      .where('username', '==', username)
+      .where('password', '==', password)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return res.status(401).json({ error: 'Invalid credentials' });
+    const admin = snapshot.docs[0].data();
+    return res.json({ success: true, admin: { id: admin.id, username: admin.username, role: admin.role || 'admin' } });
+  } catch {
+    return res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Centers list
+router.get('/centers', async (req, res) => {
+  try {
+    const snapshot = await getDb().collection(COLLECTIONS.centers).orderBy('name', 'asc').get();
+    const items = snapshot.docs.map(d => d.data());
+    return res.json(items);
+  } catch {
+    return res.status(500).json({ error: 'Failed to fetch centers' });
+  }
+});
+
+// Admin: manage centers
+router.post('/admin/centers', async (req, res) => {
+  try {
+    const id = uuidv4();
+    const doc = { id, name: req.body.name };
+    await getDb().collection(COLLECTIONS.centers).doc(id).set(doc);
+    return res.json({ success: true, id });
+  } catch {
+    return res.status(500).json({ error: 'Failed to add center' });
+  }
+});
+
+router.put('/admin/centers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await getDb().collection(COLLECTIONS.centers).doc(id).update({ name: req.body.name });
+    return res.json({ success: true });
+  } catch {
+    return res.status(500).json({ error: 'Failed to update center' });
+  }
+});
+
+router.delete('/admin/centers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await getDb().collection(COLLECTIONS.centers).doc(id).delete();
+    return res.json({ success: true });
+  } catch {
+    return res.status(500).json({ error: 'Failed to delete center' });
   }
 });
 
