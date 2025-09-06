@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>لوحة الطالب | سبشيال وان</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/assets/img/ا.png" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <a href="/" class="logo-link"><img src="/assets/img/logo.svg" alt="Logo" class="logo" /></a>
+      <div class="titles">
+        <h1 class="app-title">لوحة الطالب</h1>
+        <p class="subtitle">QR + الجداول + الإعلانات</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="logout" class="btn ghost">خروج</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="dashboard">
+      <div class="card">
+        <h3>كود الحضور (QR)</h3>
+        <div class="qr" id="qrBox">سيظهر الكود هنا</div>
+      </div>
+      <div class="card">
+        <h3>الجداول</h3>
+        <div class="list" id="schedules"></div>
+      </div>
+      <div class="card" style="grid-column:1/-1">
+        <h3>إعلانات المدرّس</h3>
+        <div class="list" id="news"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  // Protect route
+  const student = JSON.parse(localStorage.getItem('student')||'null');
+  const token = localStorage.getItem('token');
+  if(!student || !token){ window.location.href='/pages/login.html'; }
+  document.getElementById('logout').onclick=()=>{ localStorage.clear(); window.location.href='/'; };
+
+  // Render QR (simple): show student unique id
+  const qrBox = document.getElementById('qrBox');
+  qrBox.textContent = student && student.id ? `ID: ${student.id}` : 'No ID';
+
+  async function loadData(){
+    try{
+      const [sch, ann] = await Promise.all([
+        fetch('http://localhost:5179/api/schedules').then(r=>r.json()),
+        fetch('http://localhost:5179/api/announcements').then(r=>r.json())
+      ]);
+      const sWrap = document.getElementById('schedules');
+      sch.forEach(s=>{
+        const d = document.createElement('div'); d.className='item';
+        d.textContent = `${s.subject||'رياضيات'} — ${s.date} ${s.time} — ${s.center}`;
+        sWrap.appendChild(d);
+      });
+      const nWrap = document.getElementById('news');
+      ann.forEach(n=>{
+        const d = document.createElement('div'); d.className='item';
+        d.textContent = n.text;
+        nWrap.appendChild(d);
+      });
+    }catch(err){
+      // silently
+    }
+  }
+  loadData();
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تسجيل الدخول | سبشيال وان</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/assets/img/ا.png" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <a href="/" class="logo-link"><img src="/assets/img/logo.svg" alt="Logo" class="logo" /></a>
+      <div class="titles">
+        <h1 class="app-title">أحمد سامي – سبشيال وان</h1>
+        <p class="subtitle">تسجيل الدخول للطالب</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="form-card">
+      <div id="alert" class="alert" style="display:none"></div>
+      <form id="loginForm" class="form-grid">
+        <div class="input full">
+          <label>اسم المستخدم</label>
+          <input name="username" required />
+        </div>
+        <div class="input full">
+          <label>الرقم القومي/شهادة الميلاد</label>
+          <input name="nationalId" required />
+        </div>
+        <div class="full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn primary" type="submit">دخول</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+  document.getElementById('loginForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+    try{
+      const res = await fetch('http://localhost:5179/api/login',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)
+      });
+      const json = await res.json();
+      const alert = document.getElementById('alert');
+      if(res.ok){
+        localStorage.setItem('token', json.token);
+        localStorage.setItem('student', JSON.stringify(json.student));
+        window.location.href = '/pages/dashboard.html';
+      } else {
+        alert.style.display='block';
+        alert.textContent = json.message||'لم يتم العثور على الحساب أو لم تتم الموافقة بعد.';
+      }
+    }catch(err){
+      const alert = document.getElementById('alert');
+      alert.style.display='block';
+      alert.textContent = 'تعذّر الاتصال بالخادم.';
+    }
+  });
+  </script>
+</body>
+</html>
