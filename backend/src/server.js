@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { initializeFirebaseAdmin } from './services/firebase.js';
 import { router as apiRouter } from './routes/api.js';
+import { devRouter } from './routes/dev.js';
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', apiRouter);
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/dev', devRouter);
+}
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
