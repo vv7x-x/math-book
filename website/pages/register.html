@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تسجيل الطالب | سبشيال وان</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/assets/img/ا.png" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <a href="/" class="logo-link"><img src="/assets/img/ا.png" alt="Logo" class="logo" /></a>
+      <div class="titles">
+        <h1 class="app-title">أحمد سامي – سبشيال وان</h1>
+        <p class="subtitle">تسجيل حساب الطالب</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a href="/pages/login.html" class="btn ghost">تسجيل الدخول</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="form-card">
+      <div id="alert" class="alert" style="display:none"></div>
+      <form id="registerForm" class="form-grid">
+        <div class="input">
+          <label>الاسم الكامل</label>
+          <input name="fullName" required />
+        </div>
+        <div class="input">
+          <label>اسم المستخدم</label>
+          <input name="username" required />
+        </div>
+        <div class="input">
+          <label>الرقم السرّي (يحدده الطالب)</label>
+          <input name="passcode" type="password" inputmode="numeric" pattern="[0-9]{4,}" placeholder="4 أرقام على الأقل" required />
+        </div>
+        <div class="input">
+          <label for="nationalId">الرقم القومي/شهادة الميلاد (صورة)</label>
+          <input type="file" id="nationalId" name="nationalId" accept="image/*" required />
+        </div>
+        
+        <div class="input">
+          <label>هاتف الطالب</label>
+          <input name="studentPhone" required />
+        </div>
+        <div class="input">
+          <label>هاتف ولي الأمر</label>
+          <input name="parentPhone" required />
+        </div>
+        <div class="input">
+          <label>المرحلة التعليمية</label>
+          <select name="stage" required>
+            <option value="">— اختر —</option>
+            <option>اولي ثانوي</option>
+            <option>تانيه ثانوي</option>
+            <option>تالته ثانوي</option>
+          </select>
+        </div>
+        <div class="input full">
+          <label>المركز</label>
+          <select name="center" id="centers" required>
+            <option value="">— اختر المركز —</option>
+          </select>
+        </div>
+        <div class="full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" type="reset">مسح</button>
+          <button class="btn primary" type="submit">تسجيل</button>
+        </div>
+      </form>
+      <p style="color:var(--muted);margin-top:8px">بعد التسجيل ستكون الحالة: «بانتظار الموافقة».</p>
+    </div>
+  </main>
+
+  <script src="/assets/js/app.js"></script>
+  <script>
+  // AppUtils object for common functionality
+  const AppUtils = {
+    showAlert: function(message, type = 'info') {
+      const alert = document.getElementById('alert');
+      alert.innerHTML = message;
+      alert.className = `alert ${type}`;
+      alert.style.display = 'block';
+      
+      // Auto hide after 5 seconds
+      setTimeout(() => {
+        alert.style.display = 'none';
+      }, 5000);
+    },
+    
+    showLoading: function(button, isLoading) {
+      if (isLoading) {
+        button.disabled = true;
+        button.textContent = 'جاري الإرسال...';
+      } else {
+        button.disabled = false;
+        button.textContent = 'تسجيل';
+      }
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced centers list with more options
+    const centers = [
+      {id:'c1', name:'سنتر النجاح'},
+      {id:'c2', name:'سنتر النجاح برايم '},
+      {id:'c3', name:'سنتر اكسفورد'},
+      {id:'c4', name:' مدينة الشروق '},
+      {id:'c5', name:' جسر السويس'}
+    ];
+    
+    const sel = document.getElementById('centers');
+    centers.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+
+    const registerForm = document.getElementById('registerForm');
+    
+    // Enhanced form validation
+    function validateForm(data) {
+      const errors = [];
+      
+      if (!data.fullName || data.fullName.trim().length < 5) {
+        errors.push('الاسم الكامل يجب أن يكون 5 أحرف على الأقل');
+      }
+      
+      if (!data.username || data.username.trim().length < 3) {
+        errors.push('اسم المستخدم يجب أن يكون 3 أحرف على الأقل');
+      }
+
+      if (!data.passcode || String(data.passcode).trim().length < 4) {
+        errors.push('الرقم السرّي يجب أن يكون 4 أرقام على الأقل');
+      }
+      
+      if (!data.nationalId || data.nationalId.size === 0) {
+        errors.push('يرجى رفع صورة الرقم القومي أو شهادة الميلاد');
+      }
+      
+      if (!data.studentPhone || !/^[0-9+\-\s()]+$/.test(data.studentPhone)) {
+        errors.push('رقم هاتف الطالب غير صحيح');
+      }
+      
+      if (!data.parentPhone || !/^[0-9+\-\s()]+$/.test(data.parentPhone)) {
+        errors.push('رقم هاتف ولي الأمر غير صحيح');
+      }
+      
+      if (!data.stage) {
+        errors.push('يرجى اختيار المرحلة التعليمية');
+      }
+      
+      
+      if (!data.center) {
+        errors.push('يرجى اختيار المركز');
+      }
+      
+      if (errors.length > 0) {
+        AppUtils.showAlert(errors.join('<br>'), 'error');
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Enhanced form submission
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd.entries());
+      data.status = 'Pending Approval';
+      
+      // Validate form
+      if (!validateForm(data)) return;
+      
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      
+      try {
+        // Show loading state
+        AppUtils.showLoading(submitBtn, true);
+        
+        const res = await fetch('https://math-book-tpjz.vercel.app/api/register', {
+          method: 'POST',
+          body: fd
+        });
+        
+        const json = await res.json();
+        
+        if (res.ok) {
+          // Success
+          AppUtils.showAlert('تم إرسال التسجيل بنجاح! ستحصل على رسالة تأكيد قريباً.', 'success');
+          registerForm.reset();
+          
+          // Clear form visual states
+          document.querySelectorAll('.input').forEach(input => {
+            input.classList.remove('filled', 'focused');
+          });
+          
+        } else {
+          // Error
+          AppUtils.showAlert(json.message || 'حدث خطأ أثناء التسجيل. حاول مجدداً.', 'error');
+        }
+        
+      } catch (err) {
+        console.error('Registration error:', err);
+        AppUtils.showAlert('تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.', 'error');
+      } finally {
+        // Reset button
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+    
+    // Add input enhancements
+    const inputs = registerForm.querySelectorAll('input, select');
+    inputs.forEach(input => {
+      // Add focus effects
+      input.addEventListener('focus', function() {
+        this.parentElement.classList.add('focused');
+      });
+      
+      input.addEventListener('blur', function() {
+        this.parentElement.classList.remove('focused');
+        if (this.value) {
+          this.parentElement.classList.add('filled');
+        } else {
+          this.parentElement.classList.remove('filled');
+        }
+      });
+      
+      // Real-time validation for specific fields
+      if (input.name === 'studentPhone' || input.name === 'parentPhone') {
+        input.addEventListener('input', function() {
+          const value = this.value.replace(/[^0-9+\-\s()]/g, '');
+          this.value = value;
+        });
+      }
+      
+      
+      if (input.name === 'username') {
+        input.addEventListener('input', function() {
+          this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        });
+      }
+    });
+    
+    // Add form reset functionality
+    const resetBtn = registerForm.querySelector('button[type="reset"]');
+    resetBtn.addEventListener('click', function() {
+      setTimeout(() => {
+        document.querySelectorAll('.input').forEach(input => {
+          input.classList.remove('filled', 'focused');
+        });
+      }, 100);
+    });
+  });
+  </script>
+</body>
+</html>
