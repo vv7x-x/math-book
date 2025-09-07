@@ -73,26 +73,84 @@
   </main>
 
   <script>
-  // Admin auth (placeholder)
-  const token = localStorage.getItem('adminToken');
-  if(!token){ const t = prompt('كلمة مرور المشرف'); if(t==='admin'){ localStorage.setItem('adminToken','admin'); } else { alert('غير مصرح'); location.href='/'; } }
-  document.getElementById('logout').onclick=()=>{ localStorage.removeItem('adminToken'); location.reload(); };
+  // Minimal UI helpers (overlay + offline banner)
+  const BASE_API = 'https://math-book-tpjz.vercel.app';
+  let adminKey = localStorage.getItem('adminKey') || '';
+  const overlay = (()=>{
+    let el = document.getElementById('global-overlay');
+    if(!el){
+      el = document.createElement('div');
+      el.id='global-overlay';
+      el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.25);display:none;align-items:center;justify-content:center;z-index:10000';
+      el.innerHTML='<div class="loading"><div class="spinner"></div><span style="color:white;margin-inline-start:.5rem">جاري التنفيذ...</span></div>';
+      document.body.appendChild(el);
+    }
+    return {
+      show(){ el.style.display='flex'; },
+      hide(){ el.style.display='none'; }
+    };
+  })();
+  let offlineBanner = document.getElementById('offline-banner');
+  if(!offlineBanner){
+    offlineBanner=document.createElement('div');
+    offlineBanner.id='offline-banner';
+    offlineBanner.style.cssText='position:fixed;inset-inline:0;top:0;z-index:10001;background:#fee2e2;color:#991b1b;border-bottom:1px solid #fca5a5;padding:.5rem 1rem;text-align:center;display:none';
+    offlineBanner.textContent='تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.';
+    document.body.appendChild(offlineBanner);
+  }
+  window.addEventListener('online', ()=>{ offlineBanner.style.display='none'; });
+  window.addEventListener('offline', ()=>{ offlineBanner.style.display='block'; });
+
+  async function apiFetch(path, options = {}, cfg = {}){
+    const { retries = 1, timeout = 8000 } = cfg;
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), timeout);
+    const url = path.startsWith('http') ? path : `${BASE_API}${path}`;
+    try{
+      const headers = new Headers(options.headers || {});
+      if(url.includes('/api/admin/')){
+        if(!adminKey){ adminKey = localStorage.getItem('adminKey') || ''; }
+        if(adminKey){ headers.set('x-admin-key', adminKey); }
+      }
+      const res = await fetch(url, { ...options, headers, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    }catch(err){
+      clearTimeout(timer);
+      if(!navigator.onLine) offlineBanner.style.display='block';
+      if(retries > 0){
+        await new Promise(r => setTimeout(r, 600));
+        return apiFetch(path, options, { retries: retries - 1, timeout });
+      }
+      throw err;
+    }
+  }
+  // Admin auth: prompt for admin key and store
+  (function ensureAdminKey(){
+    if(!adminKey){
+      const k = prompt('أدخل مفتاح الأدمن (Admin Key)');
+      if(k && k.trim().length>0){ adminKey = k.trim(); localStorage.setItem('adminKey', adminKey); }
+      else { alert('غير مصرح'); location.href='/'; }
+    }
+  })();
+  document.getElementById('logout').onclick=()=>{ localStorage.removeItem('adminKey'); location.reload(); };
 
   async function refresh(){
-    const [pending, lessons, ann, students] = await Promise.all([
-      fetch('https://math-book-tpjz.vercel.app/api/admin/pending').then(r=>r.json()),
-      fetch('https://math-book-tpjz.vercel.app/api/schedules').then(r=>r.json()),
-      fetch('https://math-book-tpjz.vercel.app/api/announcements').then(r=>r.json()),
-      fetch('https://math-book-tpjz.vercel.app/api/admin/students').then(r=>r.json()),
-    ]);
+    try{
+      const [pending, lessons, ann, students] = await Promise.all([
+        apiFetch('/api/admin/pending', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+        apiFetch('/api/schedules', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+        apiFetch('/api/announcements', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+        apiFetch('/api/admin/students', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+      ]);
     const p = document.getElementById('pending'); p.innerHTML='';
     pending.forEach(s=>{
       const d = document.createElement('div'); d.className='item enter';
       d.innerHTML = `<strong>${s.fullName}</strong> — ${s.center} <div style="float:left;display:flex;gap:6px"><button data-id="${s.id}" class="btn primary a">✅ قبول</button><button data-id="${s.id}" class="btn">✖️ رفض</button></div>`;
       p.appendChild(d);
     });
-    document.querySelectorAll('.a').forEach(b=>b.onclick=async()=>{ await fetch(`https://math-book-tpjz.vercel.app/api/admin/approve/${b.dataset.id}`,{method:'POST'}); refresh(); });
-    document.querySelectorAll('.btn:not(.primary)').forEach(b=>b.onclick=async()=>{ const id=b.dataset.id; if(id){ await fetch(`https://math-book-tpjz.vercel.app/api/admin/reject/${id}`,{method:'POST'}); refresh(); }});
+    document.querySelectorAll('.a').forEach(b=>b.onclick=async()=>{ try{ overlay.show(); await apiFetch(`/api/admin/approve/${b.dataset.id}`,{method:'POST'},{ retries:1, timeout:7000}); }catch(e){ alert('فشل القبول: تحقق من الاتصال'); } finally{ overlay.hide(); refresh(); } });
+    document.querySelectorAll('.btn:not(.primary)').forEach(b=>b.onclick=async()=>{ const id=b.dataset.id; if(id){ try{ overlay.show(); await apiFetch(`/api/admin/reject/${id}`,{method:'POST'},{ retries:1, timeout:7000}); }catch(e){ alert('فشل الرفض'); } finally{ overlay.hide(); refresh(); } }});
 
     const l = document.getElementById('lessons'); l.innerHTML='';
     lessons.forEach(s=>{ const d=document.createElement('div'); d.className='item enter'; d.textContent=`${s.subject} — ${s.date} ${s.time} — ${s.center}`; l.appendChild(d); });
@@ -119,17 +177,22 @@
         const pass = prompt('أدخل الرقم السرّي الجديد (4 أرقام على الأقل)');
         if(!pass) return;
         try{
-          const res = await fetch(`https://math-book-tpjz.vercel.app/api/admin/set-passcode/${id}`,{
+          overlay.show();
+          const res = await apiFetch(`/api/admin/set-passcode/${id}`,{
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({passcode:pass})
-          });
+          }, { retries:1, timeout:9000 });
           if(res.ok){ alert('تم تحديث الرقم السرّي'); }
           else{ const j=await res.json(); alert(j.message||'فشل تحديث الرقم السرّي'); }
         }catch(e){ alert('خطأ في الاتصال'); }
+        finally{ overlay.hide(); }
       };
     });
-
     const a = document.getElementById('ann'); a.innerHTML='';
     ann.forEach(n=>{ const d=document.createElement('div'); d.className='item enter'; d.textContent=n.text; a.appendChild(d); });
+    }catch(err){
+      console.error('Refresh failed', err);
+      alert(err && err.name==='AbortError' ? 'انتهت مهلة الطلب' : 'تعذّر تحميل البيانات');
+    }
   }
   refresh();
 
@@ -147,11 +210,12 @@
     }
     
     try {
-      const res = await fetch('https://math-book-tpjz.vercel.app/api/admin/lessons',{
+      overlay.show();
+      const res = await apiFetch('/api/admin/lessons',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({subject,date,time,center,teacher,duration})
-      });
+      }, { retries:1, timeout:12000 });
       
       if (res.ok) {
         document.getElementById('ls_subject').value = '';
@@ -164,8 +228,8 @@
         alert('خطأ في إضافة الدرس');
       }
     } catch (err) {
-      alert('خطأ في الاتصال');
-    }
+      alert(err && err.name==='AbortError' ? 'انتهت مهلة الطلب' : 'خطأ في الاتصال');
+    } finally { overlay.hide(); }
   };
   
   document.getElementById('addAnn').onclick=async()=>{
@@ -180,11 +244,12 @@
     }
     
     try {
-      const res = await fetch('https://math-book-tpjz.vercel.app/api/admin/announcements',{
+      overlay.show();
+      const res = await apiFetch('/api/admin/announcements',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({title,text,type,important})
-      });
+      }, { retries:1, timeout:12000 });
       
       if (res.ok) {
         document.getElementById('ann_title').value = '';
@@ -197,8 +262,8 @@
         alert('خطأ في نشر الإعلان');
       }
     } catch (err) {
-      alert('خطأ في الاتصال');
-    }
+      alert(err && err.name==='AbortError' ? 'انتهت مهلة الطلب' : 'خطأ في الاتصال');
+    } finally { overlay.hide(); }
   };
   </script>
 </body>

@@ -6,19 +6,29 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import multer from 'multer';
 import crypto from 'crypto';
+import helmet from 'helmet';
+import compression from 'compression';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import { JSONFilePreset } from 'lowdb/node';
 
-// In-memory store (replace with Firebase later)
-const db = {
-  pending: [],
-  students: [],
-  lessons: [],
-  announcements: [],
-};
+dotenv.config();
 
 const app = express();
-app.use(cors());
+// CORS with custom header support
+app.use(cors({
+  origin: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','x-admin-key'],
+}));
+// Security and performance middleware
+app.use(helmet());
+app.use(compression());
+app.use(morgan('combined'));
 app.use(express.json());
 const PORT = process.env.PORT || 5179;
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'changeme-admin';
 
 // Static hosting for website and admin panel
 const __filename = fileURLToPath(import.meta.url);
@@ -26,7 +36,16 @@ const __dirname = path.dirname(__filename);
 const websiteDir = path.join(__dirname, '..', 'website');
 const adminDir = path.join(__dirname, '..', 'admin-panel');
 const uploadDir = path.join(__dirname, 'uploads');
+const dataDir = path.join(__dirname, 'data');
+const dbPath = path.join(dataDir, 'db.json');
 if(!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if(!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+// Lowdb JSON persistence
+const defaultData = { pending: [], students: [], lessons: [], announcements: [] };
+const dbStore = await JSONFilePreset(dbPath, defaultData);
+const db = dbStore.data;
+async function persist(){ await dbStore.write(); }
 
 // Multer setup for ID image uploads
 const storage = multer.diskStorage({
@@ -42,8 +61,39 @@ app.use('/', express.static(websiteDir));
 app.use('/admin', express.static(adminDir));
 app.use('/uploads', express.static(uploadDir));
 
+// Admin auth middleware
+app.use('/api/admin', (req, res, next) => {
+  try{
+    const key = req.header('x-admin-key');
+    if (!key || key !== ADMIN_SECRET) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    next();
+  }catch(e){
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+});
+
+// Rate limiting
+app.use('/api/', rateLimit({ windowMs: 60 * 1000, max: 120 }));
+app.use('/api/admin/', rateLimit({ windowMs: 60 * 1000, max: 60 }));
+
+// Health endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    counts: {
+      pending: db.pending.length,
+      students: db.students.length,
+      lessons: db.lessons.length,
+      announcements: db.announcements.length,
+    }
+  });
+});
+
 // Enhanced student registration with validation
-app.post('/api/register', upload.single('nationalId'), (req, res) => {
+app.post('/api/register', upload.single('nationalId'), async (req, res) => {
   try {
     const { fullName, username, studentPhone, parentPhone, stage, center, passcode } = req.body;
     const file = req.file;
@@ -89,6 +139,7 @@ app.post('/api/register', upload.single('nationalId'), (req, res) => {
     };
 
     db.pending.push(student);
+    await persist();
     
     res.json({
       ok: true,
@@ -103,7 +154,7 @@ app.post('/api/register', upload.single('nationalId'), (req, res) => {
 });
 
 // Enhanced student login with validation (username + passcode)
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   try {
     const { username, passcode } = req.body;
     if (!username || !passcode) {
@@ -129,6 +180,7 @@ app.post('/api/login', (req, res) => {
     // Generate token and update last login
     const token = uuid();
     student.lastLogin = new Date().toISOString();
+    await persist();
     
     res.json({ 
       token, 
@@ -150,20 +202,22 @@ app.post('/api/login', (req, res) => {
 
 // Admin basics (no real auth for demo)
 app.get('/api/admin/pending', (req,res)=>{ res.json(db.pending); });
-app.post('/api/admin/approve/:id', (req,res)=>{
+app.post('/api/admin/approve/:id', async (req,res)=>{
   const id = req.params.id;
   const i = db.pending.findIndex(x=>x.id===id);
   if(i===-1) return res.status(404).json({message:'Not found'});
   const st = db.pending.splice(i,1)[0];
   st.status = 'Approved';
   db.students.push(st);
+  await persist();
   res.json({ok:true});
 });
-app.post('/api/admin/reject/:id', (req,res)=>{
+app.post('/api/admin/reject/:id', async (req,res)=>{
   const id = req.params.id;
   const i = db.pending.findIndex(x=>x.id===id);
   if(i===-1) return res.status(404).json({message:'Not found'});
   db.pending.splice(i,1);
+  await persist();
   res.json({ok:true, message:'Your registration is incomplete, please update your information.'});
 });
 
@@ -173,7 +227,7 @@ app.get('/api/admin/students', (req, res) => {
 });
 
 // Set or change a student's passcode (admin)
-app.post('/api/admin/set-passcode/:id', (req, res) => {
+app.post('/api/admin/set-passcode/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { passcode } = req.body || {};
@@ -190,6 +244,7 @@ app.post('/api/admin/set-passcode/:id', (req, res) => {
     if (!target) return res.status(404).json({ message: 'Student not found' });
 
     target.passcodeHash = hash;
+    await persist();
     res.json({ ok: true });
   } catch (e) {
     console.error('Set passcode error:', e);
@@ -200,20 +255,37 @@ app.post('/api/admin/set-passcode/:id', (req, res) => {
 // Enhanced lessons/schedules API
 app.get('/api/schedules', (req, res) => {
   try {
+    // Optional filtering and pagination
+    const { center, from, to, page = 1, limit = 50 } = req.query;
+    const p = Math.max(1, parseInt(page));
+    const l = Math.max(1, Math.min(200, parseInt(limit)));
+
+    let lessons = [...db.lessons];
+    if (center) lessons = lessons.filter(x => (x.center||'').toLowerCase() === String(center).toLowerCase());
+    if (from) lessons = lessons.filter(x => new Date(`${x.date} ${x.time}`) >= new Date(from));
+    if (to) lessons = lessons.filter(x => new Date(`${x.date} ${x.time}`) <= new Date(to));
+
     // Sort lessons by date and time
-    const sortedLessons = db.lessons.sort((a, b) => {
+    const sortedLessons = lessons.sort((a, b) => {
       const dateA = new Date(`${a.date} ${a.time}`);
       const dateB = new Date(`${b.date} ${b.time}`);
       return dateA - dateB;
     });
-    res.json(sortedLessons);
+    const start = (p - 1) * l;
+    const paged = sortedLessons.slice(start, start + l);
+    // Backward-compatible: return array unless pagination is explicitly requested
+    if (req.query.page || req.query.limit || req.query.paginate === '1') {
+      res.json({ total: sortedLessons.length, page: p, limit: l, items: paged });
+    } else {
+      res.json(sortedLessons);
+    }
   } catch (error) {
     console.error('Schedules fetch error:', error);
     res.status(500).json({ message: 'خطأ في تحميل الجداول' });
   }
 });
 
-app.post('/api/admin/lessons', (req, res) => {
+app.post('/api/admin/lessons', async (req, res) => {
   try {
     const { subject, date, time, center, teacher, duration } = req.body;
     
@@ -233,6 +305,7 @@ app.post('/api/admin/lessons', (req, res) => {
     };
     
     db.lessons.push(lesson);
+    await persist();
     res.json(lesson);
     
   } catch (error) {
@@ -244,18 +317,28 @@ app.post('/api/admin/lessons', (req, res) => {
 // Enhanced announcements API
 app.get('/api/announcements', (req, res) => {
   try {
+    const { type, page = 1, limit = 50 } = req.query;
+    const p = Math.max(1, parseInt(page));
+    const l = Math.max(1, Math.min(200, parseInt(limit)));
+
+    let list = [...db.announcements];
+    if (type) list = list.filter(x => (x.type||'').toLowerCase() === String(type).toLowerCase());
     // Sort announcements by date (newest first)
-    const sortedAnnouncements = db.announcements.sort((a, b) => {
-      return new Date(b.date) - new Date(a.date);
-    });
-    res.json(sortedAnnouncements);
+    const sortedAnnouncements = list.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const start = (p - 1) * l;
+    const paged = sortedAnnouncements.slice(start, start + l);
+    if (req.query.page || req.query.limit || req.query.paginate === '1') {
+      res.json({ total: sortedAnnouncements.length, page: p, limit: l, items: paged });
+    } else {
+      res.json(sortedAnnouncements);
+    }
   } catch (error) {
     console.error('Announcements fetch error:', error);
     res.status(500).json({ message: 'خطأ في تحميل الإعلانات' });
   }
 });
 
-app.post('/api/admin/announcements', (req, res) => {
+app.post('/api/admin/announcements', async (req, res) => {
   try {
     const { text, title, type, important } = req.body;
     
@@ -274,6 +357,7 @@ app.post('/api/admin/announcements', (req, res) => {
     };
     
     db.announcements.push(announcement);
+    await persist();
     res.json(announcement);
     
   } catch (error) {
