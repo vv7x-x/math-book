@@ -44,8 +44,12 @@
           </select>
           <input id="ls_teacher" placeholder="المدرس" class="search-input" value="أحمد سامي"/>
           <input id="ls_duration" placeholder="المدة" class="search-input" value="2 ساعة"/>
-          <button id="addLesson" class="btn primary">إضافة درس</button>
+          <button id="addLesson" class="btn primary">➕ إضافة درس</button>
         </div>
+      </div>
+      <div class="card">
+        <h3>الطلاب المعتمدون</h3>
+        <div class="list" id="students"></div>
       </div>
       <div class="card" style="grid-column:1/-1">
         <h3>الإعلانات</h3>
@@ -62,7 +66,7 @@
           <label style="display:flex;align-items:center;gap:4px;white-space:nowrap;">
             <input type="checkbox" id="ann_important"/> مهم
           </label>
-          <button id="addAnn" class="btn secondary">نشر إعلان</button>
+          <button id="addAnn" class="btn secondary">📣 نشر إعلان</button>
         </div>
       </div>
     </div>
@@ -75,25 +79,57 @@
   document.getElementById('logout').onclick=()=>{ localStorage.removeItem('adminToken'); location.reload(); };
 
   async function refresh(){
-    const [pending, lessons, ann] = await Promise.all([
+    const [pending, lessons, ann, students] = await Promise.all([
       fetch('https://math-book-tpjz.vercel.app/api/admin/pending').then(r=>r.json()),
       fetch('https://math-book-tpjz.vercel.app/api/schedules').then(r=>r.json()),
       fetch('https://math-book-tpjz.vercel.app/api/announcements').then(r=>r.json()),
+      fetch('https://math-book-tpjz.vercel.app/api/admin/students').then(r=>r.json()),
     ]);
     const p = document.getElementById('pending'); p.innerHTML='';
     pending.forEach(s=>{
-      const d = document.createElement('div'); d.className='item';
-      d.innerHTML = `<strong>${s.fullName}</strong> — ${s.center} <div style="float:left;display:flex;gap:6px"><button data-id="${s.id}" class="btn primary a">قبول</button><button data-id="${s.id}" class="btn">رفض</button></div>`;
+      const d = document.createElement('div'); d.className='item enter';
+      d.innerHTML = `<strong>${s.fullName}</strong> — ${s.center} <div style="float:left;display:flex;gap:6px"><button data-id="${s.id}" class="btn primary a">✅ قبول</button><button data-id="${s.id}" class="btn">✖️ رفض</button></div>`;
       p.appendChild(d);
     });
     document.querySelectorAll('.a').forEach(b=>b.onclick=async()=>{ await fetch(`https://math-book-tpjz.vercel.app/api/admin/approve/${b.dataset.id}`,{method:'POST'}); refresh(); });
     document.querySelectorAll('.btn:not(.primary)').forEach(b=>b.onclick=async()=>{ const id=b.dataset.id; if(id){ await fetch(`https://math-book-tpjz.vercel.app/api/admin/reject/${id}`,{method:'POST'}); refresh(); }});
 
     const l = document.getElementById('lessons'); l.innerHTML='';
-    lessons.forEach(s=>{ const d=document.createElement('div'); d.className='item'; d.textContent=`${s.subject} — ${s.date} ${s.time} — ${s.center}`; l.appendChild(d); });
+    lessons.forEach(s=>{ const d=document.createElement('div'); d.className='item enter'; d.textContent=`${s.subject} — ${s.date} ${s.time} — ${s.center}`; l.appendChild(d); });
+
+    // Students list with Set/Change passcode action
+    const studentsWrap = document.getElementById('students'); studentsWrap.innerHTML='';
+    students.forEach(st=>{
+      const d = document.createElement('div'); d.className='item enter';
+      d.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+          <div>
+            <strong>${st.fullName}</strong>
+            <div style="color:var(--muted);font-size:.85rem">@${st.username} — ${st.stage||'غير محدد'} — ${st.center||'غير محدد'}</div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn" data-id="${st.id}" data-action="set-pass">🔑 تعيين/تغيير الرقم السرّي</button>
+          </div>
+        </div>`;
+      studentsWrap.appendChild(d);
+    });
+    document.querySelectorAll('[data-action="set-pass"]').forEach(btn=>{
+      btn.onclick = async () => {
+        const id = btn.getAttribute('data-id');
+        const pass = prompt('أدخل الرقم السرّي الجديد (4 أرقام على الأقل)');
+        if(!pass) return;
+        try{
+          const res = await fetch(`https://math-book-tpjz.vercel.app/api/admin/set-passcode/${id}`,{
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({passcode:pass})
+          });
+          if(res.ok){ alert('تم تحديث الرقم السرّي'); }
+          else{ const j=await res.json(); alert(j.message||'فشل تحديث الرقم السرّي'); }
+        }catch(e){ alert('خطأ في الاتصال'); }
+      };
+    });
 
     const a = document.getElementById('ann'); a.innerHTML='';
-    ann.forEach(n=>{ const d=document.createElement('div'); d.className='item'; d.textContent=n.text; a.appendChild(d); });
+    ann.forEach(n=>{ const d=document.createElement('div'); d.className='item enter'; d.textContent=n.text; a.appendChild(d); });
   }
   refresh();
 

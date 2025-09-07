@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import multer from 'multer';
+import crypto from 'crypto';
 
 // In-memory store (replace with Firebase later)
 const db = {
@@ -44,7 +45,7 @@ app.use('/uploads', express.static(uploadDir));
 // Enhanced student registration with validation
 app.post('/api/register', upload.single('nationalId'), (req, res) => {
   try {
-    const { fullName, username, studentPhone, parentPhone, stage, center } = req.body;
+    const { fullName, username, studentPhone, parentPhone, stage, center, passcode } = req.body;
     const file = req.file;
 
     // Validation
@@ -66,6 +67,13 @@ app.post('/api/register', upload.single('nationalId'), (req, res) => {
       return res.status(400).json({ message: 'يرجى رفع صورة الرقم القومي أو شهادة الميلاد' });
     }
 
+    // Passcode validation (4-8 digits recommended)
+    if (!passcode || String(passcode).trim().length < 4) {
+      return res.status(400).json({ message: 'يرجى إدخال رقم سرّي مكوّن من 4 أرقام على الأقل' });
+    }
+    const sanitizedPass = String(passcode).trim();
+    const passcodeHash = crypto.createHash('sha256').update(sanitizedPass).digest('hex');
+
     const student = {
       id: uuid(),
       fullName: fullName.trim(),
@@ -75,6 +83,7 @@ app.post('/api/register', upload.single('nationalId'), (req, res) => {
       stage: stage?.trim() || '',
       center: center?.trim() || '',
       nationalIdUrl: `/uploads/${file.filename}`,
+      passcodeHash,
       status: 'Pending Approval',
       createdAt: new Date().toISOString()
     };
@@ -93,15 +102,14 @@ app.post('/api/register', upload.single('nationalId'), (req, res) => {
   }
 });
 
-// Enhanced student login with validation
+// Enhanced student login with validation (username + passcode)
 app.post('/api/login', (req, res) => {
   try {
-    const { username, nationalId } = req.body;
-    
-    if (!username || !nationalId) {
-      return res.status(400).json({ message: 'يرجى إدخال اسم المستخدم والرقم القومي' });
+    const { username, passcode } = req.body;
+    if (!username || !passcode) {
+      return res.status(400).json({ message: 'يرجى إدخال اسم المستخدم والرقم السرّي' });
     }
-    
+
     const student = db.students.find(s => 
       s.username === username.trim().toLowerCase() && 
       s.status === 'Approved'
@@ -111,6 +119,11 @@ app.post('/api/login', (req, res) => {
       return res.status(401).json({ 
         message: 'لم يتم العثور على الحساب أو لم تتم الموافقة بعد.' 
       });
+    }
+    // Compare passcode
+    const candHash = crypto.createHash('sha256').update(String(passcode).trim()).digest('hex');
+    if (student.passcodeHash !== candHash) {
+      return res.status(401).json({ message: 'الرقم السرّي غير صحيح' });
     }
     
     // Generate token and update last login
@@ -152,6 +165,36 @@ app.post('/api/admin/reject/:id', (req,res)=>{
   if(i===-1) return res.status(404).json({message:'Not found'});
   db.pending.splice(i,1);
   res.json({ok:true, message:'Your registration is incomplete, please update your information.'});
+});
+
+// List approved students (for admin UI)
+app.get('/api/admin/students', (req, res) => {
+  res.json(db.students);
+});
+
+// Set or change a student's passcode (admin)
+app.post('/api/admin/set-passcode/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { passcode } = req.body || {};
+    if (!passcode || String(passcode).trim().length < 4) {
+      return res.status(400).json({ message: 'يرجى إدخال رقم سرّي 4 أرقام على الأقل' });
+    }
+    const hash = crypto.createHash('sha256').update(String(passcode).trim()).digest('hex');
+
+    let target = db.students.find(s => s.id === id);
+    if (!target) {
+      // allow setting for pending as well (pre-approval)
+      target = db.pending.find(s => s.id === id);
+    }
+    if (!target) return res.status(404).json({ message: 'Student not found' });
+
+    target.passcodeHash = hash;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Set passcode error:', e);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 // Enhanced lessons/schedules API

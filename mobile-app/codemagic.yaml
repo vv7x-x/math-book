@@ -19,7 +19,9 @@ workflows:
         ignore_failure: true
       - name: Build Debug APK
         script: |
-          flutter build apk --debug
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL=${SUPABASE_URL} \
+            --dart-define=SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     artifacts:
       - build/**/outputs/**/*.apk
       - flutter_drive.log
@@ -57,7 +59,9 @@ workflows:
         ignore_failure: true
       - name: Build Release APK
         script: |
-          flutter build apk --release
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL=${SUPABASE_URL} \
+            --dart-define=SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     artifacts:
       - build/**/outputs/**/*.apk
       - flutter_drive.log
