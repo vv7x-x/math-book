@@ -13,7 +13,7 @@
 <body>
   <header class="app-header">
     <div class="brand">
-      <a href="/" class="logo-link"><img src="/assets/img/logo.svg" alt="Logo" class="logo" /></a>
+      <a href="/" class="logo-link"><img src="/assets/img/ا.png" alt="Logo" class="logo" /></a>
       <div class="titles">
         <h1 class="app-title">أحمد سامي – سبشيال وان</h1>
         <p class="subtitle">تسجيل حساب الطالب</p>
@@ -37,9 +37,10 @@
           <input name="username" required />
         </div>
         <div class="input">
-          <label>الرقم القومي/شهادة الميلاد</label>
-          <input name="nationalId" required />
+          <label for="nationalId">الرقم القومي/شهادة الميلاد (صورة)</label>
+          <input type="file" id="nationalId" name="nationalId" accept="image/*" required />
         </div>
+        
         <div class="input">
           <label>هاتف الطالب</label>
           <input name="studentPhone" required />
@@ -52,14 +53,10 @@
           <label>المرحلة التعليمية</label>
           <select name="stage" required>
             <option value="">— اختر —</option>
-            <option>إعدادي</option>
-            <option>ثانوي</option>
-            <option>جامعي</option>
+            <option>اولي ثانوي</option>
+            <option>تانيه ثانوي</option>
+            <option>تالته ثانوي</option>
           </select>
-        </div>
-        <div class="input">
-          <label>العمر</label>
-          <input type="number" name="age" required />
         </div>
         <div class="input full">
           <label>المركز</label>
@@ -76,15 +73,41 @@
     </div>
   </main>
 
+  <script src="/assets/js/app.js"></script>
   <script>
+  // AppUtils object for common functionality
+  const AppUtils = {
+    showAlert: function(message, type = 'info') {
+      const alert = document.getElementById('alert');
+      alert.innerHTML = message;
+      alert.className = `alert ${type}`;
+      alert.style.display = 'block';
+      
+      // Auto hide after 5 seconds
+      setTimeout(() => {
+        alert.style.display = 'none';
+      }, 5000);
+    },
+    
+    showLoading: function(button, isLoading) {
+      if (isLoading) {
+        button.disabled = true;
+        button.textContent = 'جاري الإرسال...';
+      } else {
+        button.disabled = false;
+        button.textContent = 'تسجيل';
+      }
+    }
+  };
+
   document.addEventListener('DOMContentLoaded', function() {
     // Enhanced centers list with more options
     const centers = [
-      {id:'c1', name:'مركز المدينة الرئيسي'},
-      {id:'c2', name:'مركز الجامعة'},
-      {id:'c3', name:'مركز الأحياء السكنية'},
-      {id:'c4', name:'مركز وسط البلد'},
-      {id:'c5', name:'مركز الضواحي'}
+      {id:'c1', name:'سنتر النجاح'},
+      {id:'c2', name:'سنتر النجاح برايم '},
+      {id:'c3', name:'سنتر اكسفورد'},
+      {id:'c4', name:' مدينة الشروق '},
+      {id:'c5', name:' جسر السويس'}
     ];
     
     const sel = document.getElementById('centers');
@@ -109,8 +132,8 @@
         errors.push('اسم المستخدم يجب أن يكون 3 أحرف على الأقل');
       }
       
-      if (!data.nationalId || data.nationalId.trim().length < 10) {
-        errors.push('الرقم القومي يجب أن يكون 10 أرقام على الأقل');
+      if (!data.nationalId || data.nationalId.size === 0) {
+        errors.push('يرجى رفع صورة الرقم القومي أو شهادة الميلاد');
       }
       
       if (!data.studentPhone || !/^[0-9+\-\s()]+$/.test(data.studentPhone)) {
@@ -125,9 +148,6 @@
         errors.push('يرجى اختيار المرحلة التعليمية');
       }
       
-      if (!data.age || data.age < 10 || data.age > 50) {
-        errors.push('العمر يجب أن يكون بين 10 و 50 سنة');
-      }
       
       if (!data.center) {
         errors.push('يرجى اختيار المركز');
@@ -159,10 +179,9 @@
         // Show loading state
         AppUtils.showLoading(submitBtn, true);
         
-        const res = await fetch('http://localhost:5179/api/register', {
+        const res = await fetch('https://math-book-tpjz.vercel.app/api/register', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          body: fd
         });
         
         const json = await res.json();
@@ -217,12 +236,6 @@
         });
       }
       
-      if (input.name === 'age') {
-        input.addEventListener('input', function() {
-          const value = Math.max(10, Math.min(50, parseInt(this.value) || 10));
-          this.value = value;
-        });
-      }
       
       if (input.name === 'username') {
         input.addEventListener('input', function() {

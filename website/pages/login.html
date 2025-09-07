@@ -13,7 +13,7 @@
 <body>
   <header class="app-header">
     <div class="brand">
-      <a href="/" class="logo-link"><img src="/assets/img/logo.svg" alt="Logo" class="logo" /></a>
+      <a href="/" class="logo-link"><img src="/assets/img/ا.png" alt="Logo" class="logo" /></a>
       <div class="titles">
         <h1 class="app-title">أحمد سامي – سبشيال وان</h1>
         <p class="subtitle">تسجيل الدخول للطالب</p>
@@ -40,6 +40,7 @@
     </div>
   </main>
 
+  <script src="/assets/js/app.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
@@ -77,7 +78,7 @@
         // Show loading state
         AppUtils.showLoading(submitBtn, true);
         
-        const res = await fetch('http://localhost:5179/api/login', {
+        const res = await fetch('https://math-book-tpjz.vercel.app/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)

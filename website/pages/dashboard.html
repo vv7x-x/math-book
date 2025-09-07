@@ -13,7 +13,7 @@
 <body>
   <header class="app-header">
     <div class="brand">
-      <a href="/" class="logo-link"><img src="/assets/img/logo.svg" alt="Logo" class="logo" /></a>
+      <a href="/" class="logo-link"><img src="/assets/img/ا.png" alt="Logo" class="logo" /></a>
       <div class="titles">
         <h1 class="app-title">لوحة الطالب</h1>
         <p class="subtitle">QR + الجداول + الإعلانات</p>
@@ -61,6 +61,7 @@
     </div>
   </main>
 
+  <script src="/assets/js/app.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function() {
   // Protect route
@@ -206,10 +207,10 @@
       
       try {
         const [schedulesRes, announcementsRes] = await Promise.all([
-          fetch('http://localhost:5179/api/schedules', {
+          fetch('https://math-book-tpjz.vercel.app/api/schedules', {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch('http://localhost:5179/api/announcements', {
+          fetch('https://math-book-tpjz.vercel.app/api/announcements', {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);

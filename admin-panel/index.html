@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <link rel="stylesheet" href="../website/assets/css/styles.css" />
 </head>
 <body>
   <header class="app-header">
@@ -30,20 +30,39 @@
       <div class="card">
         <h3>إدارة الجداول</h3>
         <div class="list" id="lessons"></div>
-        <div style="margin-top:8px;display:flex;gap:6px">
-          <input id="ls_subject" placeholder="المادة" class="input"/>
-          <input id="ls_date" type="date" class="input"/>
-          <input id="ls_time" type="time" class="input"/>
-          <input id="ls_center" placeholder="المركز" class="input"/>
-          <button id="addLesson" class="btn primary">إضافة</button>
+        <div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
+          <input id="ls_subject" placeholder="المادة" class="search-input" required/>
+          <input id="ls_date" type="date" class="search-input" required/>
+          <input id="ls_time" type="time" class="search-input" required/>
+          <select id="ls_center" class="filter-select" required>
+            <option value="">اختر المركز</option>
+            <option value="سنتر النجاح">سنتر النجاح</option>
+            <option value="سنتر النجاح برايم">سنتر النجاح برايم</option>
+            <option value="سنتر اكسفورد">سنتر اكسفورد</option>
+            <option value="مدينة الشروق">مدينة الشروق</option>
+            <option value="جسر السويس">جسر السويس</option>
+          </select>
+          <input id="ls_teacher" placeholder="المدرس" class="search-input" value="أحمد سامي"/>
+          <input id="ls_duration" placeholder="المدة" class="search-input" value="2 ساعة"/>
+          <button id="addLesson" class="btn primary">إضافة درس</button>
         </div>
       </div>
       <div class="card" style="grid-column:1/-1">
         <h3>الإعلانات</h3>
         <div class="list" id="ann"></div>
-        <div style="margin-top:8px;display:flex;gap:6px">
-          <input id="ann_text" placeholder="نص الإعلان" class="input"/>
-          <button id="addAnn" class="btn secondary">نشر</button>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:6px">
+          <input id="ann_title" placeholder="عنوان الإعلان" class="search-input"/>
+          <textarea id="ann_text" placeholder="نص الإعلان" class="search-input" rows="2" required></textarea>
+          <select id="ann_type" class="filter-select">
+            <option value="general">عام</option>
+            <option value="important">مهم</option>
+            <option value="exam">امتحان</option>
+            <option value="assignment">واجب</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:4px;white-space:nowrap;">
+            <input type="checkbox" id="ann_important"/> مهم
+          </label>
+          <button id="addAnn" class="btn secondary">نشر إعلان</button>
         </div>
       </div>
     </div>
@@ -57,9 +76,9 @@
 
   async function refresh(){
     const [pending, lessons, ann] = await Promise.all([
-      fetch('http://localhost:5179/api/admin/pending').then(r=>r.json()),
-      fetch('http://localhost:5179/api/schedules').then(r=>r.json()),
-      fetch('http://localhost:5179/api/announcements').then(r=>r.json()),
+      fetch('https://math-book-tpjz.vercel.app/api/admin/pending').then(r=>r.json()),
+      fetch('https://math-book-tpjz.vercel.app/api/schedules').then(r=>r.json()),
+      fetch('https://math-book-tpjz.vercel.app/api/announcements').then(r=>r.json()),
     ]);
     const p = document.getElementById('pending'); p.innerHTML='';
     pending.forEach(s=>{
@@ -67,8 +86,8 @@
       d.innerHTML = `<strong>${s.fullName}</strong> — ${s.center} <div style="float:left;display:flex;gap:6px"><button data-id="${s.id}" class="btn primary a">قبول</button><button data-id="${s.id}" class="btn">رفض</button></div>`;
       p.appendChild(d);
     });
-    document.querySelectorAll('.a').forEach(b=>b.onclick=async()=>{ await fetch(`http://localhost:5179/api/admin/approve/${b.dataset.id}`,{method:'POST'}); refresh(); });
-    document.querySelectorAll('.btn:not(.primary)').forEach(b=>b.onclick=async()=>{ const id=b.dataset.id; if(id){ await fetch(`http://localhost:5179/api/admin/reject/${id}`,{method:'POST'}); refresh(); }});
+    document.querySelectorAll('.a').forEach(b=>b.onclick=async()=>{ await fetch(`https://math-book-tpjz.vercel.app/api/admin/approve/${b.dataset.id}`,{method:'POST'}); refresh(); });
+    document.querySelectorAll('.btn:not(.primary)').forEach(b=>b.onclick=async()=>{ const id=b.dataset.id; if(id){ await fetch(`https://math-book-tpjz.vercel.app/api/admin/reject/${id}`,{method:'POST'}); refresh(); }});
 
     const l = document.getElementById('lessons'); l.innerHTML='';
     lessons.forEach(s=>{ const d=document.createElement('div'); d.className='item'; d.textContent=`${s.subject} — ${s.date} ${s.time} — ${s.center}`; l.appendChild(d); });
@@ -83,13 +102,67 @@
     const date = document.getElementById('ls_date').value;
     const time = document.getElementById('ls_time').value;
     const center = document.getElementById('ls_center').value;
-    await fetch('http://localhost:5179/api/admin/lessons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subject,date,time,center})});
-    refresh();
+    const teacher = document.getElementById('ls_teacher').value;
+    const duration = document.getElementById('ls_duration').value;
+    
+    if (!subject || !date || !time || !center) {
+      alert('جميع الحقول مطلوبة');
+      return;
+    }
+    
+    try {
+      const res = await fetch('https://math-book-tpjz.vercel.app/api/admin/lessons',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({subject,date,time,center,teacher,duration})
+      });
+      
+      if (res.ok) {
+        document.getElementById('ls_subject').value = '';
+        document.getElementById('ls_date').value = '';
+        document.getElementById('ls_time').value = '';
+        document.getElementById('ls_center').value = '';
+        alert('تم إضافة الدرس بنجاح');
+        refresh();
+      } else {
+        alert('خطأ في إضافة الدرس');
+      }
+    } catch (err) {
+      alert('خطأ في الاتصال');
+    }
   };
+  
   document.getElementById('addAnn').onclick=async()=>{
+    const title = document.getElementById('ann_title').value;
     const text = document.getElementById('ann_text').value;
-    await fetch('http://localhost:5179/api/admin/announcements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-    refresh();
+    const type = document.getElementById('ann_type').value;
+    const important = document.getElementById('ann_important').checked;
+    
+    if (!text.trim()) {
+      alert('نص الإعلان مطلوب');
+      return;
+    }
+    
+    try {
+      const res = await fetch('https://math-book-tpjz.vercel.app/api/admin/announcements',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({title,text,type,important})
+      });
+      
+      if (res.ok) {
+        document.getElementById('ann_title').value = '';
+        document.getElementById('ann_text').value = '';
+        document.getElementById('ann_type').value = 'general';
+        document.getElementById('ann_important').checked = false;
+        alert('تم نشر الإعلان بنجاح');
+        refresh();
+      } else {
+        alert('خطأ في نشر الإعلان');
+      }
+    } catch (err) {
+      alert('خطأ في الاتصال');
+    }
   };
   </script>
 </body>
