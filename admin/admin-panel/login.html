@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تسجيل دخول الأدمن | سبشيال وان</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../website/assets/css/styles.css" />
+  <style>
+    body { display:flex; min-height:100vh; align-items:center; justify-content:center; background: var(--bg); }
+    .card { width:min(420px, 92vw); }
+    .brand { display:flex; align-items:center; gap:.75rem; margin-bottom: .75rem; }
+    .brand h1 { margin:0; font-size:1.25rem; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    form { display:grid; gap:.75rem; margin-top: .5rem; }
+    .alt { text-align:center; margin-top:.75rem; }
+  </style>
+</head>
+<body>
+  <main class="container" style="width:100%;">
+    <div class="card enter" style="margin:auto;">
+      <div class="brand">
+        <div>
+          <h1>لوحة الإدارة</h1>
+          <div class="muted">سجّل دخولك بحساب الأدمن</div>
+        </div>
+      </div>
+
+      <form id="loginForm">
+        <label class="input">
+          <span>اسم المستخدم</span>
+          <input id="username" placeholder="admin" required />
+        </label>
+        <label class="input">
+          <span>كلمة المرور</span>
+          <input id="password" type="password" placeholder="••••••••" required />
+        </label>
+        <button type="submit" class="btn primary">تسجيل الدخول</button>
+      </form>
+
+      <div class="alt">
+        <button id="useKey" class="btn ghost">أو استخدام مفتاح الأدمن القديم</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const BASE_API = (()=>{ try{ const o = window.location.origin; if(o) return o; }catch{} return 'http://127.0.0.1:5179'; })();
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const original = btn.textContent;
+      btn.disabled = true; btn.textContent = 'جاري الدخول...';
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      try {
+        const res = await fetch(`${BASE_API}/api/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        if (res.ok) {
+          const json = await res.json();
+          localStorage.setItem('adminJwt', json.token);
+          // Cleanup legacy key
+          localStorage.removeItem('adminKey');
+          window.location.href = './index.html';
+        } else {
+          const j = await res.json().catch(()=>({}));
+          alert(j.message || `خطأ في الدخول (${res.status})`);
+        }
+      } catch (err) {
+        alert('تعذّر الاتصال بالخادم — تأكد أن الخادم يعمل على نفس المنفذ');
+      } finally {
+        btn.disabled = false; btn.textContent = original;
+      }
+    });
+
+    document.getElementById('useKey').addEventListener('click', () => {
+      const k = prompt('أدخل مفتاح الأدمن (Admin Key)');
+      if (k && k.trim().length > 0) {
+        localStorage.setItem('adminKey', k.trim());
+        // Cleanup JWT if any
+        localStorage.removeItem('adminJwt');
+        window.location.href = './index.html';
+      }
+    });
+  </script>
+</body>
+</html>

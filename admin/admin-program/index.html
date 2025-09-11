@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ماسح حضور الأدمن | سبشيال وان</title>
+  <meta name="theme-color" content="#1E88E5" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <style>
+    :root{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Cairo, sans-serif; }
+    body{ margin:0; background:#0f172a; color:#e2e8f0; min-height:100vh; display:flex; }
+    .wrap{ margin:auto; width:min(100%,720px); padding:16px; }
+    .card{ background:#0b1220; border:1px solid #1f2a44; border-radius:12px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+    h1{ margin:0 0 8px; font-weight:700; font-size:1.4rem; }
+    .muted{ color:#94a3b8; font-size:.95rem; margin-bottom:12px; }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .input{ display:flex; flex-direction:column; gap:6px; flex:1; min-width:200px; }
+    .input input{ background:#0f172a; color:#e2e8f0; border:1px solid #1f2a44; border-radius:8px; padding:10px 12px; }
+    .btn{ display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:8px; border:1px solid #1f2a44; color:#e2e8f0; background:#1E88E5; cursor:pointer; }
+    .btn.ghost{ background:transparent; }
+    video{ width:100%; border-radius:10px; border:1px solid #1f2a44; background:black; }
+    .status{ margin-top:8px; min-height:24px; }
+    .badge{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:.85rem; }
+    .ok{ background:#064e3b; color:#34d399; }
+    .err{ background:#7f1d1d; color:#fca5a5; }
+    .queue{ margin-top:10px; font-size:.9rem; color:#cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>ماسح الحضور — الأدمن</h1>
+      <div class="muted">سجّل الدخول، اختر درس اليوم، ثم ابدأ المسح بالكاميرا. يعمل دون اتصال ويزامن تلقائياً.</div>
+
+      <div class="row" style="margin-bottom:8px;">
+        <div class="input"><label>Endpoint</label><input id="endpoint" placeholder="https://<functions-url>" /></div>
+        <div class="input"><label>Scanner ID</label><input id="scannerId" placeholder="lab-1" /></div>
+      </div>
+      <div class="row" style="margin-bottom:12px;">
+        <div class="input"><label>اسم المستخدم</label><input id="user" placeholder="admin" /></div>
+        <div class="input"><label>كلمة المرور</label><input id="pass" type="password" placeholder="••••••••" /></div>
+        <button id="login" class="btn">تسجيل الدخول</button>
+        <button id="logout" class="btn ghost">خروج</button>
+      </div>
+
+      <div class="row" style="margin-bottom:8px;">
+        <div class="input"><label>درس اليوم</label><select id="lesson"></select></div>
+        <button id="refreshLessons" class="btn ghost">تحديث الدروس</button>
+      </div>
+
+      <video id="video" playsinline muted></video>
+      <div class="status" id="status"></div>
+      <div class="queue">قائمة الانتظار (غير متصل): <span id="qsize">0</span></div>
+    </div>
+  </div>
+
+  <script src="./src/app.js" type="module"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      });
+    }
+  </script>
+</body>
+</html>

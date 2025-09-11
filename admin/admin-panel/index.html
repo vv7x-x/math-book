@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>لوحة الإدارة | سبشيال وان</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../website/assets/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="titles">
+        <h1 class="app-title">لوحة الإدارة</h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="logout" class="btn ghost">خروج</button>
+    </div>
+  </header>
+  <!-- math parallax overlay to match website theme -->
+  <div class="math-parallax" aria-hidden="true">∫  π  Σ  √  ∆</div>
+
+  <main class="container">
+    <div class="dashboard">
+      <div class="card" style="grid-column:1/-1">
+        <h3>بروفايل الطالب</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto auto auto;gap:8px;align-items:center;margin-bottom:8px">
+          <input id="st_code" class="search-input" inputmode="numeric" placeholder="ابحث بالكود الرقمي (مثال 2388)" />
+          <input id="st_qrid" class="search-input" placeholder="أو أدخل QR ID (اختياري)" />
+          <button id="findByCode" class="btn primary">🔎 بحث بالكود</button>
+          <button id="findByQr" class="btn">🔎 بحث بـ QR ID</button>
+          <button class="btn" id="scrollToScanner">📷 فتح الماسح</button>
+        </div>
+        <div class="card" style="margin:0 0 8px;">
+          <h4 style="margin:0 0 6px">المسح بالكاميرا (داخل اللوحة)</h4>
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-bottom:6px">
+            <select id="cam_select" class="filter-select"></select>
+            <button id="cam_start" class="btn">▶️ بدء</button>
+            <button id="cam_stop" class="btn">⏹️ إيقاف</button>
+          </div>
+          <div style="position:relative;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden">
+            <video id="cam_video" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+            <canvas id="cam_canvas" style="display:none"></canvas>
+            <div id="cam_status" style="position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;color:#fff;padding:.5rem;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(0,0,0,.35))">جاهز للمسح…</div>
+          </div>
+        </div>
+        <div id="studentProfile"></div>
+      </div>
+      <div class="card">
+        <h3>الطلبات المعلقة</h3>
+        <div class="list" id="pending"></div>
+      </div>
+      <div class="card">
+        <h3>إدارة الجداول</h3>
+        <div class="list" id="lessons"></div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
+          <input id="ls_subject" placeholder="المادة" class="search-input" required/>
+          <input id="ls_date" type="date" class="search-input" required/>
+          <input id="ls_time" type="time" class="search-input" required/>
+          <select id="ls_center" class="filter-select" required>
+            <option value="">اختر المركز</option>
+            <option value="سنتر النجاح">سنتر النجاح</option>
+            <option value="سنتر النجاح برايم">سنتر النجاح برايم</option>
+            <option value="سنتر اكسفورد">سنتر اكسفورد</option>
+            <option value="مدينة الشروق">مدينة الشروق</option>
+            <option value="جسر السويس">جسر السويس</option>
+          </select>
+          <input id="ls_teacher" placeholder="المدرس" class="search-input" value="أحمد سامي"/>
+          <input id="ls_duration" placeholder="المدة" class="search-input" value="2 ساعة"/>
+          <button id="addLesson" class="btn primary">➕ إضافة درس</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>الطلاب المعتمدون</h3>
+        <div class="list" id="students"></div>
+      </div>
+      <div class="card" style="grid-column:1/-1">
+        <h3>الإعلانات</h3>
+        <div class="list" id="ann"></div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:6px">
+          <input id="ann_title" placeholder="عنوان الإعلان" class="search-input"/>
+          <textarea id="ann_text" placeholder="نص الإعلان" class="search-input" rows="2" required></textarea>
+          <select id="ann_type" class="filter-select">
+            <option value="general">عام</option>
+            <option value="important">مهم</option>
+            <option value="exam">امتحان</option>
+            <option value="assignment">واجب</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:4px;white-space:nowrap;">
+            <input type="checkbox" id="ann_important"/> مهم
+          </label>
+          <button id="addAnn" class="btn secondary">📣 نشر إعلان</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  // Minimal UI helpers (overlay + offline banner)
+  const BASE_API = (()=>{
+    try{
+      const origin = window.location.origin;
+      if(origin) return origin;
+    }catch{}
+    return 'https://math-book-tpjz.vercel.app';
+  })();
+  let adminKey = localStorage.getItem('adminKey') || '';
+  let adminJwt = localStorage.getItem('adminJwt') || '';
+  const overlay = (()=>{
+    let el = document.getElementById('global-overlay');
+    if(!el){
+      el = document.createElement('div');
+      el.id='global-overlay';
+      el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.25);display:none;align-items:center;justify-content:center;z-index:10000';
+      el.innerHTML='<div class="loading"><div class="spinner"></div><span style="color:white;margin-inline-start:.5rem">جاري التنفيذ...</span></div>';
+      document.body.appendChild(el);
+    }
+    return {
+      show(){ el.style.display='flex'; },
+      hide(){ el.style.display='none'; }
+    };
+  })();
+  let offlineBanner = document.getElementById('offline-banner');
+  if(!offlineBanner){
+    offlineBanner=document.createElement('div');
+    offlineBanner.id='offline-banner';
+    offlineBanner.style.cssText='position:fixed;inset-inline:0;top:0;z-index:10001;background:#fee2e2;color:#991b1b;border-bottom:1px solid #fca5a5;padding:.5rem 1rem;text-align:center;display:none';
+    offlineBanner.textContent='تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.';
+    document.body.appendChild(offlineBanner);
+  }
+  window.addEventListener('online', ()=>{ offlineBanner.style.display='none'; });
+  window.addEventListener('offline', ()=>{ offlineBanner.style.display='block'; });
+
+  async function apiFetch(path, options = {}, cfg = {}){
+    const { retries = 1, timeout = 8000 } = cfg;
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), timeout);
+    const url = path.startsWith('http') ? path : `${BASE_API}${path}`;
+    try{
+      const headers = new Headers(options.headers || {});
+      if(url.includes('/api/admin/')){
+        if(!adminJwt){ adminJwt = localStorage.getItem('adminJwt') || ''; }
+        if(adminJwt){ headers.set('Authorization', `Bearer ${adminJwt}`); }
+        else {
+          if(!adminKey){ adminKey = localStorage.getItem('adminKey') || ''; }
+          if(adminKey){ headers.set('x-admin-key', adminKey); }
+        }
+      }
+      const res = await fetch(url, { ...options, headers, signal: controller.signal });
+      clearTimeout(timer);
+      if(res.status === 401 && url.includes('/api/admin/')){
+        localStorage.removeItem('adminJwt'); adminJwt='';
+        location.href = './login.html';
+      }
+      return res;
+    }catch(err){
+      clearTimeout(timer);
+      if(!navigator.onLine) offlineBanner.style.display='block';
+      if(retries > 0){
+        await new Promise(r => setTimeout(r, 600));
+        return apiFetch(path, options, { retries: retries - 1, timeout });
+      }
+      throw err;
+    }
+  }
+  (function ensureAuth(){
+    if(!adminJwt && !adminKey){
+      location.href = './login.html';
+    }
+  })();
+
+  document.getElementById('logout').onclick=()=>{ localStorage.removeItem('adminKey'); localStorage.removeItem('adminJwt'); location.href='./login.html'; };
+
+  // Student profile helpers
+  function profileTpl(st){
+    return `<div class="item enter" style="display:grid;gap:8px">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <strong>${st.fullName||''}</strong>
+          <div style="color:var(--muted);font-size:.85rem">@${st.username} — مرحلة: ${st.stage||'-'} — السنتر: ${st.center||'-'}</div>
+          <div style="color:var(--muted);font-size:.85rem">الكود: <strong id="st_code_val">${st.code||'-'}</strong> — QR ID: <code id="st_qrid_val" style="user-select:all">${st.qrId||'-'}</code></div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn" id="copy_code">📋 نسخ الكود</button>
+            <button class="btn" id="copy_qrid">📋 نسخ QR ID</button>
+            <button class="btn secondary" id="print_card">🖨️ طباعة كارت الطالب</button>
+          </div>
+          <div style="color:var(--muted);font-size:.85rem">وليّ الأمر: ${st.parentPhone||'-'} — الطالب: ${st.studentPhone||'-'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px">
+        <div class="card" style="margin:0">
+          <h4 style="margin:0 0 6px">سجل الحضور</h4>
+          <div id="st_att" class="list"></div>
+        </div>
+        <div class="card" style="margin:0">
+          <h4 style="margin:0 0 6px">النتائج</h4>
+          <div id="st_res" class="list" style="margin-bottom:8px"></div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px">
+            <input id="res_name" class="search-input" placeholder="اسم الامتحان"/>
+            <input id="res_score" class="search-input" type="number" step="0.01" placeholder="الدرجة"/>
+            <input id="res_max" class="search-input" type="number" step="0.01" placeholder="من"/>
+            <button id="addRes" class="btn secondary">➕ إضافة نتيجة</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  async function loadProfileByCode(){
+    const code = parseInt(document.getElementById('st_code').value,10);
+    if(!code){ alert('أدخل كودًا صالحًا'); return; }
+    try{
+      overlay.show();
+      const res = await apiFetch(`/api/admin/students/by-code/${code}`,{}, {retries:1, timeout:9000});
+      if(!res.ok){ const j = await res.json().catch(()=>({})); throw new Error(j.message||'لم يتم العثور على الطالب'); }
+      const st = await res.json();
+      renderStudentProfile(st);
+    }catch(e){ alert(e.message||'فشل البحث'); }
+    finally{ overlay.hide(); }
+  }
+
+  async function loadProfileByQrId(qrid){
+    const id = qrid || document.getElementById('st_qrid').value.trim();
+    if(!id){ alert('أدخل QR ID'); return; }
+    try{
+      overlay.show();
+      const res = await apiFetch(`/api/admin/students/by-qr/${encodeURIComponent(id)}`,{}, {retries:1, timeout:9000});
+      if(!res.ok){ const j = await res.json().catch(()=>({})); throw new Error(j.message||'لم يتم العثور على الطالب'); }
+      const st = await res.json();
+      renderStudentProfile(st);
+    }catch(e){ alert(e.message||'فشل البحث'); }
+    finally{ overlay.hide(); }
+  }
+
+  async function renderStudentProfile(st){
+    const wrap = document.getElementById('studentProfile');
+    wrap.innerHTML = profileTpl(st);
+    // Copy buttons
+    const copy_code = document.getElementById('copy_code');
+    const copy_qrid = document.getElementById('copy_qrid');
+    const print_btn = document.getElementById('print_card');
+    if(copy_code){ copy_code.onclick = ()=> copyToClipboard(String(st.code||'')); }
+    if(copy_qrid){ copy_qrid.onclick = ()=> copyToClipboard(String(st.qrId||'')); }
+    if(print_btn){ print_btn.onclick = ()=> printStudentCard(st); }
+    // Attendance
+    try{
+      const att = await apiFetch(`/api/admin/students/${st.id}/attendance`,{}, {retries:1, timeout:9000}).then(r=>r.json());
+      const attEl = document.getElementById('st_att');
+      attEl.innerHTML = '';
+      if(att && att.length){
+        att.forEach(a=>{ const d=document.createElement('div'); d.className='item'; d.textContent = `${new Date(a.timestamp||a.scanned_at).toLocaleString('ar-EG')} — ${a.scannerId||a.scanner_id||''}`; attEl.appendChild(d); });
+      }else{ attEl.innerHTML = '<div class="item">لا يوجد حضور</div>'; }
+    }catch{}
+    // Results
+    try{
+      const res = await apiFetch(`/api/admin/students/${st.id}/results`,{}, {retries:1, timeout:9000}).then(r=>r.json());
+      const resEl = document.getElementById('st_res'); resEl.innerHTML='';
+      if(res && res.length){ res.forEach(r=>{ const d=document.createElement('div'); d.className='item'; d.textContent = `${r.examName||r.exam_name}: ${r.score??'-'} / ${r.maxScore??'-'} — ${r.date}`; resEl.appendChild(d); }); }
+      else{ resEl.innerHTML = '<div class="item">لا توجد نتائج</div>'; }
+    }catch{}
+    // Add result handler
+    const addBtn = document.getElementById('addRes');
+    if(addBtn){
+      addBtn.onclick = async ()=>{
+        const examName = document.getElementById('res_name').value.trim();
+        const score = document.getElementById('res_score').value;
+        const maxScore = document.getElementById('res_max').value;
+        if(!examName){ alert('أدخل اسم الامتحان'); return; }
+        try{
+          overlay.show();
+          const resp = await apiFetch('/api/admin/results',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ studentId: st.id, examName, score: score?Number(score):null, maxScore: maxScore?Number(maxScore):null })
+          }, {retries:1, timeout:9000});
+          if(resp.ok){ alert('تم إضافة النتيجة'); renderStudentProfile(st); }
+          else { const j = await resp.json().catch(()=>({})); alert(j.message||'فشل إضافة النتيجة'); }
+        }catch(e){ alert('خطأ في الاتصال'); }
+        finally{ overlay.hide(); }
+      };
+    }
+  }
+
+  function copyToClipboard(text){
+    if(!text){ alert('لا توجد قيمة للنسخ'); return; }
+    navigator.clipboard.writeText(text).then(()=>{
+      alert('تم النسخ');
+    }).catch(()=>{
+      // fallback
+      const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); alert('تم النسخ'); }catch{ alert('تعذّر النسخ'); } document.body.removeChild(ta);
+    });
+  }
+
+  // Load QR generator (for printing) if needed
+  function loadQrGen(){
+    return new Promise((resolve)=>{
+      if (window.QRCode && window.QRCode.toCanvas) return resolve();
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+      s.onload=()=>resolve(); document.head.appendChild(s);
+    });
+  }
+
+  async function printStudentCard(st){
+    try{
+      await loadQrGen();
+      const payload = st.qrId ? `so1:qr:${st.qrId}` : String(st.code||'');
+      // Prepare canvases
+      const qrCanvas = document.createElement('canvas');
+      await window.QRCode.toCanvas(qrCanvas, payload, { width: 360, margin: 2, errorCorrectionLevel:'M' });
+      const W=960, H=540; // 16:9 card
+      const c = document.createElement('canvas'); c.width=W; c.height=H; const ctx=c.getContext('2d');
+      // Background
+      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+      // Header gradient
+      const grad=ctx.createLinearGradient(0,0,W,0); grad.addColorStop(0,'#1E88E5'); grad.addColorStop(1,'#7C4DFF');
+      ctx.fillStyle=grad; ctx.fillRect(0,0,W,110);
+      // Title
+      ctx.fillStyle='#ffffff'; ctx.font='bold 36px Cairo, system-ui'; ctx.textAlign='center'; ctx.fillText('Special One — بطاقة الطالب', W/2, 70);
+      // QR
+      const qrSize=320; const qx=60, qy=160; ctx.drawImage(qrCanvas, qx, qy, qrSize, qrSize);
+      // Info
+      ctx.fillStyle='#0F172A'; ctx.textAlign='left';
+      ctx.font='bold 42px Cairo, system-ui'; ctx.fillText(st.fullName||'الاسم غير متوفر', 420, 230);
+      ctx.font='28px Cairo, system-ui'; ctx.fillText(`@${st.username||''}`, 420, 270);
+      ctx.font='32px Cairo, system-ui'; ctx.fillText(`الكود: ${st.code||'-'}`, 420, 320);
+      ctx.font='24px Cairo, system-ui'; ctx.fillText(`QR ID: ${st.qrId||'-'}`, 420, 360);
+      ctx.font='24px Cairo, system-ui'; ctx.fillText(`المرحلة: ${st.stage||'-'} — السنتر: ${st.center||'-'}`, 420, 400);
+      ctx.font='20px Cairo, system-ui'; ctx.fillStyle='#475569'; ctx.fillText('أحمد سامي — Special One', 420, 440);
+      // Border
+      ctx.strokeStyle='#E5E7EB'; ctx.lineWidth=2; ctx.strokeRect(10,10,W-20,H-20);
+      // Export
+      const url = c.toDataURL('image/png');
+      const a=document.createElement('a'); a.href=url; a.download=`student-card-${st.code||st.username||'so1'}.png`; a.click();
+    }catch(e){ alert('تعذّر طباعة الكارت'); }
+  }
+
+  document.getElementById('findByCode').onclick = loadProfileByCode;
+  document.getElementById('findByQr').onclick = ()=> loadProfileByQrId();
+  // Scroll to embedded scanner section
+  (function(){
+    const btn = document.getElementById('scrollToScanner');
+    if(btn){
+      btn.onclick = ()=>{
+        const target = document.getElementById('cam_video');
+        if(target){ target.scrollIntoView({ behavior:'smooth', block:'start' }); }
+      };
+    }
+  })();
+
+  // === In-panel Camera Scanner ===
+  let camStream=null, scanTimer=null, detector=null;
+  async function listCameras(){
+    try{
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d=>d.kind==='videoinput');
+      const sel = document.getElementById('cam_select');
+      sel.innerHTML = '';
+      cams.forEach(c=>{ const o=document.createElement('option'); o.value=c.deviceId; o.textContent=c.label||'كاميرا'; sel.appendChild(o); });
+      if(!cams.length){ sel.innerHTML = '<option>لا توجد كاميرات</option>'; }
+    }catch{}
+  }
+  async function startCam(){
+    try{
+      await listCameras();
+      const sel = document.getElementById('cam_select');
+      const deviceId = sel.value || undefined;
+      camStream && stopCam();
+      camStream = await navigator.mediaDevices.getUserMedia({ video: deviceId? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }, audio:false });
+      const video = document.getElementById('cam_video');
+      video.srcObject = camStream; await video.play();
+      // Try BarcodeDetector
+      if ('BarcodeDetector' in window) {
+        try{ detector = new window.BarcodeDetector({ formats:['qr_code'] }); }catch{ detector = null; }
+      }
+      scanLoop();
+      document.getElementById('cam_status').textContent = 'جارٍ المسح…';
+    }catch(e){ document.getElementById('cam_status').textContent = 'تعذّر فتح الكاميرا'; }
+  }
+  function stopCam(){
+    if (scanTimer){ cancelAnimationFrame(scanTimer); scanTimer=null; }
+    const video = document.getElementById('cam_video');
+    if (video) { video.pause(); }
+    if (camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+    document.getElementById('cam_status').textContent = 'متوقف';
+  }
+  async function scanLoop(){
+    const video = document.getElementById('cam_video');
+    const canvas = document.getElementById('cam_canvas');
+    const ctx = canvas.getContext('2d');
+    if (video.readyState >= 2 && !video.paused){
+      try{
+        if (detector){
+          const codes = await detector.detect(video);
+          if (codes && codes.length){
+            const raw = codes[0].rawValue || codes[0].raw || '';
+            if (raw){ onQrDetected(raw); return; }
+          }
+        } else if (window.jsQR){
+          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+          ctx.drawImage(video,0,0,canvas.width,canvas.height);
+          const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+          const code = window.jsQR(img.data, canvas.width, canvas.height);
+          if (code && code.data){ onQrDetected(code.data); return; }
+        }
+      }catch{}
+    }
+    scanTimer = requestAnimationFrame(scanLoop);
+  }
+  let lastScanAt=0, lastVal='';
+  function onQrDetected(val){
+    const now = Date.now();
+    if (val === lastVal && now - lastScanAt < 2500){ scanTimer = requestAnimationFrame(scanLoop); return; }
+    lastVal = val; lastScanAt = now;
+    document.getElementById('cam_status').textContent = 'تم التقاط QR: جاري الفتح…';
+    // Expect payload to include qrId or be the qrId directly; try both
+    // If payload like "so1:qr:<uuid>" extract the last segment
+    let qrid = val;
+    const m = String(val).match(/([0-9a-fA-F-]{36})/);
+    if (m) qrid = m[1];
+    loadProfileByQrId(qrid).then(()=>{
+      document.getElementById('cam_status').textContent = 'تم الفتح — جارٍ المسح…';
+      scanTimer = requestAnimationFrame(scanLoop);
+    }).catch(()=>{
+      document.getElementById('cam_status').textContent = 'تعذّر فتح البروفايل';
+      scanTimer = requestAnimationFrame(scanLoop);
+    });
+  }
+  document.getElementById('cam_start').onclick = startCam;
+  document.getElementById('cam_stop').onclick = stopCam;
+
+  // Load jsQR fallback dynamically
+  (function loadJsQr(){
+    if ('BarcodeDetector' in window) return; // only if not supported
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.async = true; document.head.appendChild(s);
+  })();
+
+  async function refresh(){
+    try{
+      const [pending, lessons, ann, students] = await Promise.all([
+        apiFetch('/api/admin/pending', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+        apiFetch('/api/schedules', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+        apiFetch('/api/announcements', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+        apiFetch('/api/admin/students', {}, { retries: 2, timeout: 9000 }).then(r=>r.json()),
+      ]);
+    const p = document.getElementById('pending'); p.innerHTML='';
+    pending.forEach(s=>{
+      const d = document.createElement('div'); d.className='item enter';
+      d.innerHTML = `<strong>${s.fullName}</strong> — ${s.center} <div style="float:left;display:flex;gap:6px"><button data-id="${s.id}" class="btn primary a">✅ قبول</button><button data-id="${s.id}" class="btn">✖️ رفض</button></div>`;
+      p.appendChild(d);
+    });
+    document.querySelectorAll('.a').forEach(b=>b.onclick=async()=>{ try{ overlay.show(); await apiFetch(`/api/admin/approve/${b.dataset.id}`,{method:'POST'},{ retries:1, timeout:7000}); }catch(e){ alert('فشل القبول: تحقق من الاتصال'); } finally{ overlay.hide(); refresh(); } });
+    document.querySelectorAll('.btn:not(.primary)').forEach(b=>b.onclick=async()=>{ const id=b.dataset.id; if(id){ try{ overlay.show(); await apiFetch(`/api/admin/reject/${id}`,{method:'POST'},{ retries:1, timeout:7000}); }catch(e){ alert('فشل الرفض'); } finally{ overlay.hide(); refresh(); } }});
+
+    const l = document.getElementById('lessons'); l.innerHTML='';
+    lessons.forEach(s=>{ const d=document.createElement('div'); d.className='item enter'; d.textContent=`${s.subject} — ${s.date} ${s.time} — ${s.center}`; l.appendChild(d); });
+
+    // Students list with Set/Change passcode action
+    const studentsWrap = document.getElementById('students'); studentsWrap.innerHTML='';
+    students.forEach(st=>{
+      const d = document.createElement('div'); d.className='item enter';
+      d.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+          <div>
+            <strong>${st.fullName}</strong>
+            <div style="color:var(--muted);font-size:.85rem">@${st.username} — ${st.stage||'غير محدد'} — ${st.center||'غير محدد'}</div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn" data-id="${st.id}" data-action="set-pass">🔑 تعيين/تغيير الرقم السرّي</button>
+          </div>
+        </div>`;
+      studentsWrap.appendChild(d);
+    });
+    document.querySelectorAll('[data-action="set-pass"]').forEach(btn=>{
+      btn.onclick = async () => {
+        const id = btn.getAttribute('data-id');
+        const pass = prompt('أدخل الرقم السرّي الجديد (4 أرقام على الأقل)');
+        if(!pass) return;
+        try{
+          overlay.show();
+          const res = await apiFetch(`/api/admin/set-passcode/${id}`,{
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({passcode:pass})
+          }, { retries:1, timeout:9000 });
+          if(res.ok){ alert('تم تحديث الرقم السرّي'); }
+          else{ const j=await res.json(); alert(j.message||'فشل تحديث الرقم السرّي'); }
+        }catch(e){ alert('خطأ في الاتصال'); }
+        finally{ overlay.hide(); }
+      };
+    });
+    const a = document.getElementById('ann'); a.innerHTML='';
+    ann.forEach(n=>{ const d=document.createElement('div'); d.className='item enter'; d.textContent=n.text; a.appendChild(d); });
+    }catch(err){
+      console.error('Refresh failed', err);
+      alert(err && err.name==='AbortError' ? 'انتهت مهلة الطلب' : 'تعذّر تحميل البيانات');
+    }
+  }
+  refresh();
+
+  document.getElementById('addLesson').onclick=async()=>{
+    const subject = document.getElementById('ls_subject').value;
+    const date = document.getElementById('ls_date').value;
+    const time = document.getElementById('ls_time').value;
+    const center = document.getElementById('ls_center').value;
+    const teacher = document.getElementById('ls_teacher').value;
+    const duration = document.getElementById('ls_duration').value;
+    
+    if (!subject || !date || !time || !center) {
+      alert('جميع الحقول مطلوبة');
+      return;
+    }
+    
+    try {
+      overlay.show();
+      const res = await apiFetch('/api/admin/lessons',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({subject,date,time,center,teacher,duration})
+      }, { retries:1, timeout:12000 });
+      
+      if (res.ok) {
+        document.getElementById('ls_subject').value = '';
+        document.getElementById('ls_date').value = '';
+        document.getElementById('ls_time').value = '';
+        document.getElementById('ls_center').value = '';
+        alert('تم إضافة الدرس بنجاح');
+        refresh();
+      } else {
+        alert('خطأ في إضافة الدرس');
+      }
+    } catch (err) {
+      alert(err && err.name==='AbortError' ? 'انتهت مهلة الطلب' : 'خطأ في الاتصال');
+    } finally { overlay.hide(); }
+  };
+  
+  document.getElementById('addAnn').onclick=async()=>{
+    const title = document.getElementById('ann_title').value;
+    const text = document.getElementById('ann_text').value;
+    const type = document.getElementById('ann_type').value;
+    const important = document.getElementById('ann_important').checked;
+    
+    if (!text.trim()) {
+      alert('نص الإعلان مطلوب');
+      return;
+    }
+    
+    try {
+      overlay.show();
+      const res = await apiFetch('/api/admin/announcements',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({title,text,type,important})
+      }, { retries:1, timeout:12000 });
+      
+      if (res.ok) {
+        document.getElementById('ann_title').value = '';
+        document.getElementById('ann_text').value = '';
+        document.getElementById('ann_type').value = 'general';
+        document.getElementById('ann_important').checked = false;
+        alert('تم نشر الإعلان بنجاح');
+        refresh();
+      } else {
+        alert('خطأ في نشر الإعلان');
+      }
+    } catch (err) {
+      alert(err && err.name==='AbortError' ? 'انتهت مهلة الطلب' : 'خطأ في الاتصال');
+    } finally { overlay.hide(); }
+  };
+  </script>
+</body>
+</html>

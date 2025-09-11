@@ -1,0 +1,31 @@
+version: '3.9'
+services:
+  mongo:
+    image: mongo:7
+    container_name: specialone-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+  backend:
+    image: node:20-alpine
+    container_name: specialone-backend
+    working_dir: /app
+    environment:
+      - PORT=4000
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongo:27017/special_one
+      - JWT_ACCESS_SECRET=dev_access_secret
+      - JWT_REFRESH_SECRET=dev_refresh_secret
+      - CLIENT_ORIGIN=http://localhost:3000
+      - ADMIN_ORIGIN=http://localhost:3000
+    volumes:
+      - ./backend:/app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mongo
+volumes:
+  mongo_data: {}
