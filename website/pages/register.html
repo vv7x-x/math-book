@@ -105,13 +105,13 @@
   };
 
   document.addEventListener('DOMContentLoaded', function() {
-    // Enhanced centers list with more options
+    // Enhanced centers list (normalized)
     const centers = [
       {id:'c1', name:'سنتر النجاح'},
-      {id:'c2', name:'سنتر النجاح برايم '},
+      {id:'c2', name:'سنتر النجاح برايم'},
       {id:'c3', name:'سنتر اكسفورد'},
-      {id:'c4', name:' مدينة الشروق '},
-      {id:'c5', name:' جسر السويس'}
+      {id:'c4', name:'مدينة الشروق'},
+      {id:'c5', name:'جسر السويس'}
     ];
     
     const sel = document.getElementById('centers');
@@ -169,11 +169,27 @@
       return true;
     }
     
+    // A11Y: inputs have labels and aria-live on alerts handled by NotificationManager
+
+    // File validation helpers
+    const fileInput = document.getElementById('nationalId');
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    const ALLOWED_TYPES = ['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
+
+    function validateFile(file){
+      if(!file) { AppUtils.showAlert('رفع شهادة الميلاد/الهوية مطلوب', 'error'); return false; }
+      if(!ALLOWED_TYPES.includes(file.type)) { AppUtils.showAlert('الملف يجب أن يكون صورة أو PDF', 'error'); return false; }
+      if(file.size > MAX_SIZE) { AppUtils.showAlert('حجم الملف يجب ألا يتجاوز 5MB', 'error'); return false; }
+      return true;
+    }
+
     // Enhanced form submission
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const fd = new FormData(e.target);
+      const fd = new FormData(registerForm);
+      const f = fileInput?.files?.[0];
+      if (!validateFile(f)) return;
       const data = Object.fromEntries(fd.entries());
       data.status = 'Pending Approval';
       
@@ -187,10 +203,10 @@
         // Show loading state
         AppUtils.showLoading(submitBtn, true);
         
-        const res = await fetch('https://math-book-tpjz.vercel.app/api/register', {
+        const res = await API.apiFetch('/api/register', {
           method: 'POST',
           body: fd
-        });
+        }, { retries: 2, timeout: 12000 });
         
         const json = await res.json();
         
@@ -210,8 +226,9 @@
         }
         
       } catch (err) {
-        console.error('Registration error:', err);
-        AppUtils.showAlert('تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.', 'error');
+        console.error('Register error:', err);
+        const msg = (err && err.name === 'AbortError') ? 'انتهت مهلة الطلب، حاول مرة أخرى.' : 'تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.';
+        AppUtils.showAlert(msg, 'error');
       } finally {
         // Reset button
         submitBtn.textContent = originalText;

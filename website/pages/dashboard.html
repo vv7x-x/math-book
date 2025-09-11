@@ -9,8 +9,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="/assets/img/ا.png" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
+  <meta name="theme-color" content="#1E88E5" />
+  <style>
+    /* Mobile app-like shell */
+    .app-shell{ min-height:100dvh; display:grid; grid-template-rows:auto 1fr auto; }
+    .app-bottom-nav{ position:sticky; bottom:0; inset-inline:0; background:var(--card); border-top:1px solid var(--border); display:grid; grid-template-columns:repeat(5,1fr); gap:0; }
+    .tab-btn{ appearance:none; background:none; border:0; padding:.75rem .25rem; display:flex; flex-direction:column; align-items:center; gap:.25rem; color:var(--muted); font-weight:600; cursor:pointer; }
+    .tab-btn.active{ color:var(--primary); }
+    .tab-icon{ font-size:1.2rem; }
+    .app-section{ display:none; }
+    .app-section.active{ display:block; }
+    @media(min-width:900px){ .app-bottom-nav{ display:none; } }
+  </style>
 </head>
 <body>
+  <div class="app-shell">
   <header class="app-header">
     <div class="brand">
       <a href="/" class="logo-link"><img src="/assets/img/ا.png" alt="Logo" class="logo" /></a>
@@ -25,371 +38,122 @@
   </header>
 
   <main class="container">
-    <div class="dashboard">
-      <div class="card">
+    <!-- Sections like a mobile app -->
+    <section id="sec-home" class="app-section active" aria-labelledby="home-title">
+      <h2 id="home-title" class="sr-only">الرئيسية</h2>
+      <div class="card enter">
+        <h3>مرحبًا <span id="st-name"></span></h3>
+        <p style="color:var(--muted)">يمكنك استعراض QR الخاص بك، الجداول، والإعلانات من الأسفل.</p>
+      </div>
+    </section>
+    <section id="sec-qr" class="app-section" aria-labelledby="qr-title">
+      <h2 id="qr-title" class="sr-only">كود الحضور</h2>
+      <div class="card enter">
         <h3>كود الحضور (QR)</h3>
-        <div class="qr" id="qrBox">سيظهر الكود هنا</div>
+        <div id="qrBox" class="qr">سيظهر QR هنا</div>
       </div>
-      <div class="card">
-        <h3>الجداول</h3>
-        <div class="search-container">
-          <input type="text" id="scheduleSearch" placeholder="بحث في الجداول..." class="search-input">
-          <select id="scheduleFilter" class="filter-select">
-            <option value="">جميع المواد</option>
-            <option value="رياضيات">رياضيات</option>
-            <option value="فيزياء">فيزياء</option>
-            <option value="كيمياء">كيمياء</option>
-            <option value="أحياء">أحياء</option>
-          </select>
+    </section>
+    <section id="sec-schedule" class="app-section" aria-labelledby="sched-title">
+      <h2 id="sched-title" class="sr-only">الجداول</h2>
+      <div class="card enter"><h3>الجداول</h3><div id="schedList" class="list"></div></div>
+    </section>
+    <section id="sec-ann" class="app-section" aria-labelledby="ann-title">
+      <h2 id="ann-title" class="sr-only">الإعلانات</h2>
+      <div class="card enter"><h3>الإعلانات</h3><div id="annList" class="list"></div></div>
+    </section>
+    <section id="sec-profile" class="app-section" aria-labelledby="prof-title">
+      <h2 id="prof-title" class="sr-only">الملف الشخصي</h2>
+      <div class="card enter">
+        <h3>بياناتي</h3>
+        <div id="profileBox" class="list"></div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem">
+          <button id="logoutBtn" class="btn">خروج</button>
         </div>
-        <div class="list" id="schedules"></div>
       </div>
-      <div class="card" style="grid-column:1/-1">
-        <h3>إعلانات المدرّس</h3>
-        <div class="search-container">
-          <input type="text" id="newsSearch" placeholder="بحث في الإعلانات..." class="search-input">
-          <select id="newsFilter" class="filter-select">
-            <option value="">جميع الإعلانات</option>
-            <option value="important">مهم</option>
-            <option value="general">عام</option>
-            <option value="exam">امتحان</option>
-            <option value="assignment">واجب</option>
-          </select>
-        </div>
-        <div class="list" id="news"></div>
-      </div>
-    </div>
+    </section>
   </main>
+
+  <nav class="app-bottom-nav" aria-label="قائمة تبويبات">
+    <button class="tab-btn active" data-tab="home"><span class="tab-icon">🏠</span><span>الرئيسية</span></button>
+    <button class="tab-btn" data-tab="qr"><span class="tab-icon">🧾</span><span>QR</span></button>
+    <button class="tab-btn" data-tab="schedule"><span class="tab-icon">📅</span><span>الجداول</span></button>
+    <button class="tab-btn" data-tab="ann"><span class="tab-icon">🔔</span><span>الإعلانات</span></button>
+    <button class="tab-btn" data-tab="profile"><span class="tab-icon">👤</span><span>حسابي</span></button>
+  </nav>
+  </div>
 
   <script src="/assets/js/app.js"></script>
   <script>
-  document.addEventListener('DOMContentLoaded', function() {
-  // Protect route
-    const student = JSON.parse(localStorage.getItem('student') || 'null');
-  const token = localStorage.getItem('token');
-    
-    if (!student || !token) {
-      AppUtils.showAlert('يرجى تسجيل الدخول أولاً', 'error');
-      setTimeout(() => {
-        window.location.href = '/pages/login.html';
-      }, 2000);
-      return;
-    }
-    
-    // Logout functionality
-    document.getElementById('logout').onclick = () => {
-      if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
-        localStorage.clear();
-        AppUtils.showAlert('تم تسجيل الخروج بنجاح', 'success');
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 1000);
-      }
+    // Route guard: require login
+    (function guard(){
+      try{
+        const token = localStorage.getItem('token');
+        const stRaw = localStorage.getItem('student');
+        if(!token || !stRaw){ window.location.href = '/pages/login.html?redirect=dashboard'; return; }
+        window.__student = JSON.parse(stRaw);
+      }catch{ window.location.href = '/pages/login.html?redirect=dashboard'; return; }
+    })();
+
+    // Tabs
+    const tabs = document.querySelectorAll('.tab-btn');
+    const sections = {
+      home: document.getElementById('sec-home'),
+      qr: document.getElementById('sec-qr'),
+      schedule: document.getElementById('sec-schedule'),
+      ann: document.getElementById('sec-ann'),
+      profile: document.getElementById('sec-profile')
     };
+    tabs.forEach(btn=> btn.onclick = ()=>{
+      tabs.forEach(b=> b.classList.remove('active'));
+      btn.classList.add('active');
+      Object.values(sections).forEach(s=> s.classList.remove('active'));
+      const k = btn.getAttribute('data-tab');
+      if(sections[k]) sections[k].classList.add('active');
+    });
 
-    // Enhanced QR Code display with actual QR generation
-    const qrBox = document.getElementById('qrBox');
-    
-    function generateQRCode(data, size = 200) {
-      // Simple QR-like pattern generation (in real app, use a QR library)
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      
-      // Create a simple pattern that looks like QR code
-      const cellSize = size / 25;
-      ctx.fillStyle = '#000';
-      
-      // Generate pattern based on data hash
-      let hash = 0;
-      for (let i = 0; i < data.length; i++) {
-        hash = ((hash << 5) - hash + data.charCodeAt(i)) & 0xffffffff;
+    // Fill student info and logout
+    (function initProfile(){
+      const st = window.__student || {};
+      const nameEl = document.getElementById('st-name'); if(nameEl) nameEl.textContent = st.fullName || st.username || '';
+      const prof = document.getElementById('profileBox');
+      if(prof){
+        const rows = [
+          ['الاسم', st.fullName||'-'],
+          ['اسم المستخدم', st.username||'-'],
+          ['المرحلة', st.stage||'-'],
+          ['السنتر', st.center||'-'],
+          ['الكود', st.code||'-'],
+          ['QR ID', st.qrId||'-']
+        ];
+        prof.innerHTML=''; rows.forEach(([k,v])=>{ const d=document.createElement('div'); d.className='item'; d.textContent=`${k}: ${v}`; prof.appendChild(d); });
       }
-      
-      // Create QR-like pattern
-      for (let x = 0; x < 25; x++) {
-        for (let y = 0; y < 25; y++) {
-          if ((x + y + Math.abs(hash)) % 3 === 0 || 
-              (x * y + Math.abs(hash)) % 7 === 0 ||
-              (x === 0 || x === 24 || y === 0 || y === 24) ||
-              (x >= 8 && x <= 16 && y >= 8 && y <= 16)) {
-            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-          }
-        }
-      }
-      
-      return canvas;
-    }
-    
-    function displayQRCode() {
-      if (student && student.id) {
-        const qrData = `STUDENT:${student.id}:${student.username}`;
-        const qrCanvas = generateQRCode(qrData);
-        
-        qrBox.innerHTML = '';
-        
-        // Create QR container
-        const qrContainer = document.createElement('div');
-        qrContainer.style.cssText = 'text-align: center; padding: 1rem;';
-        
-        // Add QR code
-        qrCanvas.style.cssText = 'border: 2px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;';
-        qrContainer.appendChild(qrCanvas);
-        
-        // Add student info
-        const infoDiv = document.createElement('div');
-        infoDiv.innerHTML = `
-          <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text);">كود الحضور</div>
-          <div style="font-family: monospace; font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem;">${student.id}</div>
-          <div style="font-size: 0.75rem; color: var(--muted);">اعرض هذا الكود للمدرس</div>
-        `;
-        qrContainer.appendChild(infoDiv);
-        
-        // Add refresh button
-        const refreshBtn = document.createElement('button');
-        refreshBtn.className = 'btn ghost';
-        refreshBtn.innerHTML = '🔄 تحديث الكود';
-        refreshBtn.style.cssText = 'margin-top: 0.5rem; font-size: 0.75rem; padding: 0.5rem;';
-        refreshBtn.onclick = () => {
-          qrBox.innerHTML = '<div class="loading"><div class="spinner"></div><span>جاري تحديث الكود...</span></div>';
-          setTimeout(displayQRCode, 1000);
-        };
-        qrContainer.appendChild(refreshBtn);
-        
-        // Add download button
-        const downloadBtn = document.createElement('button');
-        downloadBtn.className = 'btn ghost';
-        downloadBtn.innerHTML = '💾 حفظ الكود';
-        downloadBtn.style.cssText = 'margin-top: 0.5rem; font-size: 0.75rem; padding: 0.5rem; margin-left: 0.5rem;';
-        downloadBtn.onclick = () => {
-          const link = document.createElement('a');
-          link.download = `qr-code-${student.id}.png`;
-          link.href = qrCanvas.toDataURL();
-          link.click();
-        };
-        qrContainer.appendChild(downloadBtn);
-        
-        qrBox.appendChild(qrContainer);
-        
-        // Add auto-refresh every 5 minutes
-        setInterval(() => {
-          if (document.visibilityState === 'visible') {
-            displayQRCode();
-          }
-        }, 5 * 60 * 1000);
-        
-      } else {
-        qrBox.innerHTML = `
-          <div style="text-align: center; color: var(--error); padding: 2rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
-            <div>لا يوجد كود حضور متاح</div>
-            <div style="font-size: 0.875rem; color: var(--muted); margin-top: 0.5rem;">تأكد من تسجيل الدخول بشكل صحيح</div>
-          </div>
-        `;
-      }
-    }
-    
-    displayQRCode();
+      const logoutBtn = document.getElementById('logoutBtn');
+      if(logoutBtn){ logoutBtn.onclick = ()=>{ localStorage.removeItem('token'); localStorage.removeItem('student'); window.location.href = '/pages/login.html'; }; }
+      const logoutTop = document.getElementById('logout');
+      if(logoutTop){ logoutTop.onclick = ()=>{ localStorage.removeItem('token'); localStorage.removeItem('student'); window.location.href = '/pages/login.html'; }; }
+    })();
 
-    // Data storage
-    let allSchedules = [];
-    let allAnnouncements = [];
-    
-    // Enhanced data loading with better error handling
-    async function loadData() {
-      const schedulesWrap = document.getElementById('schedules');
-      const newsWrap = document.getElementById('news');
-      
-      // Show loading states
-      AppUtils.showLoading(schedulesWrap, true);
-      AppUtils.showLoading(newsWrap, true);
-      
-      try {
-        const [schedulesRes, announcementsRes] = await Promise.all([
-          fetch('https://math-book-tpjz.vercel.app/api/schedules', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch('https://math-book-tpjz.vercel.app/api/announcements', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-        ]);
-        
-        if (schedulesRes.ok && announcementsRes.ok) {
-          allSchedules = await schedulesRes.json();
-          allAnnouncements = await announcementsRes.json();
-          
-          // Render filtered data
-          renderSchedules();
-          renderAnnouncements();
-          
-        } else {
-          throw new Error('Failed to fetch data');
-        }
-        
-      } catch (err) {
-        console.error('Dashboard data loading error:', err);
-        
-        schedulesWrap.innerHTML = `
-          <div style="text-align: center; color: var(--error); padding: 2rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
-            <div>تعذّر تحميل الجداول</div>
-            <button onclick="loadData()" class="btn ghost" style="margin-top: 1rem;">إعادة المحاولة</button>
-          </div>
-        `;
-        
-        newsWrap.innerHTML = `
-          <div style="text-align: center; color: var(--error); padding: 2rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
-            <div>تعذّر تحميل الإعلانات</div>
-            <button onclick="loadData()" class="btn ghost" style="margin-top: 1rem;">إعادة المحاولة</button>
-          </div>
-        `;
-      }
-    }
-    
-    // Render schedules with filtering
-    function renderSchedules() {
-      const schedulesWrap = document.getElementById('schedules');
-      const searchTerm = document.getElementById('scheduleSearch').value.toLowerCase();
-      const filterValue = document.getElementById('scheduleFilter').value;
-      
-      let filteredSchedules = allSchedules.filter(schedule => {
-        const matchesSearch = !searchTerm || 
-          (schedule.subject && schedule.subject.toLowerCase().includes(searchTerm)) ||
-          (schedule.center && schedule.center.toLowerCase().includes(searchTerm)) ||
-          (schedule.date && schedule.date.toLowerCase().includes(searchTerm));
-        
-        const matchesFilter = !filterValue || 
-          (schedule.subject && schedule.subject.toLowerCase().includes(filterValue.toLowerCase()));
-        
-        return matchesSearch && matchesFilter;
-      });
-      
-      schedulesWrap.innerHTML = '';
-      
-      if (filteredSchedules.length > 0) {
-        filteredSchedules.forEach(schedule => {
-          const item = document.createElement('div');
-          item.className = 'item enter';
-          item.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <strong>${schedule.subject || 'رياضيات'}</strong>
-              <span style="color: var(--primary); font-size: 0.875rem;">${schedule.time || 'غير محدد'}</span>
-            </div>
-            <div style="color: var(--muted); font-size: 0.875rem;">
-              📅 ${schedule.date || 'غير محدد'} | 📍 ${schedule.center || 'غير محدد'}
-            </div>
-          `;
-          schedulesWrap.appendChild(item);
-        });
-      } else {
-        schedulesWrap.innerHTML = `
-          <div style="text-align: center; color: var(--muted); padding: 2rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
-            <div>${searchTerm || filterValue ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد جداول متاحة حالياً'}</div>
-          </div>
-        `;
-      }
-    }
-    
-    // Render announcements with filtering
-    function renderAnnouncements() {
-      const newsWrap = document.getElementById('news');
-      const searchTerm = document.getElementById('newsSearch').value.toLowerCase();
-      const filterValue = document.getElementById('newsFilter').value;
-      
-      let filteredAnnouncements = allAnnouncements.filter(announcement => {
-        const matchesSearch = !searchTerm || 
-          (announcement.title && announcement.title.toLowerCase().includes(searchTerm)) ||
-          (announcement.text && announcement.text.toLowerCase().includes(searchTerm));
-        
-        const matchesFilter = !filterValue || 
-          (announcement.type && announcement.type.toLowerCase() === filterValue.toLowerCase());
-        
-        return matchesSearch && matchesFilter;
-      });
-      
-      newsWrap.innerHTML = '';
-      
-      if (filteredAnnouncements.length > 0) {
-        filteredAnnouncements.forEach(announcement => {
-          const item = document.createElement('div');
-          item.className = 'item enter';
-          const type = (announcement.type || '').toLowerCase();
-          const typeBadge = type === 'important' ? 'badge warning' :
-                            type === 'exam' ? 'badge error' :
-                            type === 'assignment' ? 'badge info' : 'badge neutral';
-          item.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-              <strong>📢 ${announcement.title || 'إعلان'}</strong>
-              <span style="color: var(--muted); font-size: 0.75rem;">${AppUtils.formatDate(announcement.date || new Date())}</span>
-            </div>
-            <div style="color: var(--text); line-height: 1.6;">${announcement.text}</div>
-            ${announcement.type ? `<div style="margin-top: 0.5rem;"><span class="${typeBadge} ${type==='important' ? 'pulse' : ''}">${announcement.type}</span></div>` : ''}
-          `;
-          newsWrap.appendChild(item);
-        });
-      } else {
-        newsWrap.innerHTML = `
-          <div style="text-align: center; color: var(--muted); padding: 2rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
-            <div>${searchTerm || filterValue ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد إعلانات جديدة'}</div>
-          </div>
-        `;
-      }
-    }
-    
-    // Add search and filter event listeners
-    function setupSearchAndFilter() {
-      const scheduleSearch = document.getElementById('scheduleSearch');
-      const scheduleFilter = document.getElementById('scheduleFilter');
-      const newsSearch = document.getElementById('newsSearch');
-      const newsFilter = document.getElementById('newsFilter');
-      
-      // Debounced search for better performance
-      const debouncedScheduleSearch = AppUtils.debounce(renderSchedules, 300);
-      const debouncedNewsSearch = AppUtils.debounce(renderAnnouncements, 300);
-      
-      scheduleSearch.addEventListener('input', debouncedScheduleSearch);
-      scheduleFilter.addEventListener('change', renderSchedules);
-      newsSearch.addEventListener('input', debouncedNewsSearch);
-      newsFilter.addEventListener('change', renderAnnouncements);
-    }
-    
-    // Load data on page load
-    loadData();
-    
-    // Setup search and filter functionality
-    setupSearchAndFilter();
-    
-    // Auto-refresh data every 5 minutes
-    setInterval(loadData, 5 * 60 * 1000);
-    
-    // Add refresh button functionality
-    const refreshBtn = document.createElement('button');
-    refreshBtn.className = 'btn ghost';
-    refreshBtn.innerHTML = '🔄 تحديث';
-    refreshBtn.onclick = loadData;
-    
-    const headerActions = document.querySelector('.header-actions');
-    if (headerActions) {
-      headerActions.insertBefore(refreshBtn, headerActions.firstChild);
-    }
-    
-    // Add student info display
-    const studentInfo = document.createElement('div');
-    studentInfo.style.cssText = 'background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1.5rem; text-align: center;';
-    studentInfo.innerHTML = `
-      <div style="font-weight: 600; margin-bottom: 0.5rem;">مرحباً ${student.fullName || student.username}</div>
-      <div style="color: var(--muted); font-size: 0.875rem;">${student.stage || 'غير محدد'} | ${student.center || 'غير محدد'}</div>
-    `;
-    
-    const container = document.querySelector('.container');
-    if (container) {
-      container.insertBefore(studentInfo, container.firstChild);
-    }
-  });
+    // QR render via external service
+    (function renderQr(){
+      const box = document.getElementById('qrBox'); if(!box) return;
+      const st = window.__student || {}; const val = st.qrId || (st.code? String(st.code):'');
+      if(!val){ box.textContent='لا يوجد QR'; return; }
+      const img = document.createElement('img'); img.alt='QR'; img.loading='lazy';
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent('so1:qr:'+val)}`;
+      box.innerHTML=''; box.appendChild(img);
+    })();
+
+    // Load schedules and announcements
+    (async function loadData(){
+      try{
+        const sched = await API.apiFetch('/api/schedules', {}, { retries: 2, timeout: 9000 }).then(r=>r.json());
+        const l = document.getElementById('schedList'); if(l){ l.innerHTML=''; (sched||[]).slice(0,30).forEach(s=>{ const d=document.createElement('div'); d.className='item'; d.textContent=`${s.subject} — ${s.date} ${s.time} — ${s.center}`; l.appendChild(d); }); }
+      }catch{}
+      try{
+        const ann = await API.apiFetch('/api/announcements', {}, { retries: 2, timeout: 9000 }).then(r=>r.json());
+        const a = document.getElementById('annList'); if(a){ a.innerHTML=''; (ann||[]).slice(0,30).forEach(n=>{ const d=document.createElement('div'); d.className='item'; d.textContent=n.text||n.title; a.appendChild(d); }); }
+      }catch{}
+    })();
   </script>
 </body>
 </html>

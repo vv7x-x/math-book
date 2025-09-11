@@ -67,6 +67,20 @@
       
       const fd = new FormData(e.target);
       const data = Object.fromEntries(fd.entries());
+      // Normalize inputs
+      if (data.username) {
+        data.username = String(data.username)
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, '')
+          .replace(/\+$/g, '')
+          .replace(/[^a-z0-9_]/g, '');
+        loginForm.querySelector('input[name="username"]').value = data.username;
+      }
+      if (data.passcode) {
+        data.passcode = String(data.passcode).trim();
+        loginForm.querySelector('input[name="passcode"]').value = data.passcode;
+      }
       
       // Validate form
       if (!validateForm(data)) return;
@@ -78,11 +92,11 @@
         // Show loading state
         AppUtils.showLoading(submitBtn, true);
         
-        const res = await fetch('https://math-book-tpjz.vercel.app/api/login', {
+        const res = await API.apiFetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: data.username, passcode: data.passcode })
-        });
+        }, { retries: 2, timeout: 9000 });
         
         const json = await res.json();
         
@@ -106,7 +120,8 @@
         
       } catch (err) {
         console.error('Login error:', err);
-        AppUtils.showAlert('تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.', 'error');
+        const msg = (err && err.name === 'AbortError') ? 'انتهت مهلة الطلب، حاول مرة أخرى.' : 'تعذّر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.';
+        AppUtils.showAlert(msg, 'error');
       } finally {
         // Reset button
         submitBtn.textContent = originalText;
@@ -145,6 +160,20 @@
         }
       });
     });
+    
+    // Prefill from URL query (?username=&passcode=&autologin=1)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const u = params.get('username');
+      const p = params.get('passcode');
+      const autolog = params.get('autologin');
+      if (u) loginForm.querySelector('input[name="username"]').value = u;
+      if (p) loginForm.querySelector('input[name="passcode"]').value = p;
+      if ((u && p) && (autolog === '1' || autolog === 'true' || autolog === 'yes')) {
+        // Delay to allow DOM ready
+        setTimeout(()=> loginForm.dispatchEvent(new Event('submit')), 100);
+      }
+    } catch {}
   });
   </script>
 </body>
